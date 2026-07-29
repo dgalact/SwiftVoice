@@ -25,7 +25,19 @@
 - CMake;
 - Git.
 
-После клонирования приватного репозитория:
+Клонирование на Mac с настроенным GitHub SSH-ключом:
+
+```bash
+git clone git@github.com:dgalact/Jarvis.git
+```
+
+Либо через HTTPS с авторизацией GitHub:
+
+```bash
+git clone https://github.com/dgalact/Jarvis.git
+```
+
+После клонирования:
 
 ```bash
 cd Jarvis
