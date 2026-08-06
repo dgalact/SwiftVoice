@@ -7,8 +7,8 @@ whisper_cli="$whisper_dir/build/bin/whisper-cli"
 
 for command_name in git cmake swift; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
-    echo "Не найдена команда: $command_name" >&2
-    echo "Установи Xcode Command Line Tools и CMake, затем повтори запуск." >&2
+    echo "Command not found: $command_name" >&2
+    echo "Please install Xcode Command Line Tools and CMake, then run setup again." >&2
     exit 2
   fi
 done
@@ -20,8 +20,8 @@ done
 defaults write org.swiftvoice.mac whisperExecutablePath "$whisper_cli"
 
 echo
-echo "SwiftVoice установлен: /Applications/SwiftVoice.app"
-echo "Выбери или скачай модель Whisper прямо в Настройках приложения (Настройки -> Распознавание)."
-echo "При первом запуске выдай доступ к микрофону и Accessibility."
-echo "Запуск:"
+echo "SwiftVoice successfully installed: /Applications/SwiftVoice.app"
+echo "Select or download your preferred Whisper model directly in Settings -> Recognition."
+echo "Grant Microphone and Accessibility permissions when prompted on first launch."
+echo "Launch with:"
 echo "open \"/Applications/SwiftVoice.app\""

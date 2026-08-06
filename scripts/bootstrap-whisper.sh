@@ -8,8 +8,8 @@ whisper_dir="$vendor_dir/whisper.cpp"
 mkdir -p "$vendor_dir"
 
 if ! command -v cmake >/dev/null 2>&1; then
-  echo "Для сборки whisper.cpp нужен CMake." >&2
-  echo "После установки CMake повторно запусти этот скрипт." >&2
+  echo "CMake is required to build whisper.cpp." >&2
+  echo "Please install CMake and run setup again." >&2
   exit 2
 fi
 
@@ -26,6 +26,3 @@ cmake --build "$whisper_dir/build" --config Release -j
 
 echo "whisper-cli:"
 find "$whisper_dir/build" -type f -name whisper-cli -perm -111 -print -quit
-echo
-echo "Модель Large v3 Turbo можно загрузить отдельно:"
-echo "$whisper_dir/models/download-ggml-model.sh large-v3-turbo"
