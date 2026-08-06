@@ -1,6 +1,7 @@
 import AppKit
 import ApplicationServices
 import AVFoundation
+import Combine
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
@@ -11,15 +12,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var eventTap: CFMachPort?
     private var eventTapSource: CFRunLoopSource?
     private var permissionRetryTimer: Timer?
-    private var isRightOptionDown = false
+    private var isHotkeyKeyDown = false
     private var statusItem: NSStatusItem!
     private var statusMenuItem: NSMenuItem!
     private var microphoneMenuItem: NSMenuItem!
     private var toggleMenuItem: NSMenuItem!
+    private var settingsMenuItem: NSMenuItem!
+    private var quitMenuItem: NSMenuItem!
     private var isBusy = false
+    private var cancellables = Set<AnyCancellable>()
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        if let iconURL = Bundle.main.url(forResource: "JarvisIcon", withExtension: "icns"),
+        if let iconURL = Bundle.main.url(forResource: "SwiftVoiceIcon", withExtension: "icns"),
            let icon = NSImage(contentsOf: iconURL) {
             NSApplication.shared.applicationIconImage = icon
         }
@@ -28,6 +32,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         requestPermissions()
         installPushToTalkWhenAuthorized()
         refreshConfigurationStatus()
+
+        LocalizationManager.shared.$language
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.updateLocalizedMenuTitles()
+            }
+            .store(in: &cancellables)
+
+        HotkeyManager.shared.$hotkey
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.updateLocalizedMenuTitles()
+            }
+            .store(in: &cancellables)
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -46,24 +64,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return true
     }
 
+    private var aboutMenuItem: NSMenuItem!
+
     private func buildMenu() {
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         statusItem.button?.image = MenuBarIcon.make()
-        statusItem.button?.image?.accessibilityDescription = "Jarvis"
+        statusItem.button?.image?.accessibilityDescription = "SwiftVoice"
 
+        let loc = LocalizationManager.shared
         let menu = NSMenu()
         menu.delegate = self
-        statusMenuItem = NSMenuItem(title: "Проверяю конфигурацию…", action: nil, keyEquivalent: "")
+        statusMenuItem = NSMenuItem(title: loc.string("menu_checking"), action: nil, keyEquivalent: "")
         statusMenuItem.isEnabled = false
         menu.addItem(statusMenuItem)
 
-        microphoneMenuItem = NSMenuItem(title: "Микрофон: определяю…", action: nil, keyEquivalent: "")
+        microphoneMenuItem = NSMenuItem(title: loc.string("menu_mic_detecting"), action: nil, keyEquivalent: "")
         microphoneMenuItem.submenu = NSMenu()
         menu.addItem(microphoneMenuItem)
         menu.addItem(.separator())
 
         toggleMenuItem = NSMenuItem(
-            title: "Начать диктовку",
+            title: "\(loc.string("menu_ptt_hint")): \(HotkeyManager.shared.hotkey.displayString)",
             action: #selector(toggleRecording),
             keyEquivalent: ""
         )
@@ -71,18 +92,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(toggleMenuItem)
 
         menu.addItem(.separator())
-        let settings = NSMenuItem(
-            title: "Настройки…",
+        settingsMenuItem = NSMenuItem(
+            title: loc.string("menu_settings"),
             action: #selector(showSettings),
             keyEquivalent: ","
         )
-        settings.target = self
-        menu.addItem(settings)
+        settingsMenuItem.target = self
+        menu.addItem(settingsMenuItem)
 
-        let quit = NSMenuItem(title: "Завершить", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
-        menu.addItem(quit)
+        quitMenuItem = NSMenuItem(title: loc.string("menu_quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        menu.addItem(quitMenuItem)
         statusItem.menu = menu
         refreshMicrophoneMenu()
+    }
+
+    private func updateLocalizedMenuTitles() {
+        let loc = LocalizationManager.shared
+        let hotkey = HotkeyManager.shared.hotkey
+        settingsMenuItem?.title = loc.string("menu_settings")
+        quitMenuItem?.title = loc.string("menu_quit")
+        if !recorder.isRecording && !isBusy {
+            toggleMenuItem?.title = "\(loc.string("menu_ptt_hint")): \(hotkey.displayString)"
+        }
+        refreshMicrophoneMenu()
+        refreshConfigurationStatus()
     }
 
     func menuWillOpen(_ menu: NSMenu) {
@@ -130,20 +163,59 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 return Unmanaged.passUnretained(event)
             }
 
-            guard type == .flagsChanged,
-                  event.getIntegerValueField(.keyboardEventKeycode) == 61
-            else {
-                return Unmanaged.passUnretained(event)
+            let hotkey = HotkeyManager.shared.hotkey
+            let code = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
+
+            if hotkey.isModifierOnly {
+                if type == .flagsChanged, code == hotkey.keyCode {
+                    let flags = event.flags
+                    var isPressed = false
+                    switch code {
+                    case 61, 58: isPressed = flags.contains(.maskAlternate)
+                    case 62, 59: isPressed = flags.contains(.maskControl)
+                    case 54, 55: isPressed = flags.contains(.maskCommand)
+                    case 60, 56: isPressed = flags.contains(.maskShift)
+                    case 63: isPressed = flags.contains(.maskSecondaryFn)
+                    default: isPressed = false
+                    }
+                    Task { @MainActor in
+                        delegate.handlePushToTalk(isPressed: isPressed)
+                    }
+                    return nil
+                }
+            } else {
+                if type == .keyDown, code == hotkey.keyCode {
+                    let flags = event.flags
+                    let reqFlags = NSEvent.ModifierFlags(rawValue: hotkey.modifierFlagsRaw)
+                    var matches = true
+                    if reqFlags.contains(.command) && !flags.contains(.maskCommand) { matches = false }
+                    if reqFlags.contains(.option) && !flags.contains(.maskAlternate) { matches = false }
+                    if reqFlags.contains(.control) && !flags.contains(.maskControl) { matches = false }
+                    if reqFlags.contains(.shift) && !flags.contains(.maskShift) { matches = false }
+
+                    if matches {
+                        Task { @MainActor in
+                            delegate.handlePushToTalk(isPressed: true)
+                        }
+                        return nil
+                    }
+                } else if type == .keyUp, code == hotkey.keyCode {
+                    Task { @MainActor in
+                        delegate.handlePushToTalk(isPressed: false)
+                    }
+                    return nil
+                }
             }
 
-            let isPressed = event.flags.contains(.maskAlternate)
-            Task { @MainActor in
-                delegate.handleRightOption(isPressed: isPressed)
-            }
-            return nil
+            return Unmanaged.passUnretained(event)
         }
 
-        let mask = CGEventMask(1 << CGEventType.flagsChanged.rawValue)
+        let mask = CGEventMask(
+            (1 << CGEventType.flagsChanged.rawValue) |
+            (1 << CGEventType.keyDown.rawValue) |
+            (1 << CGEventType.keyUp.rawValue)
+        )
+
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap,
             place: .headInsertEventTap,
@@ -163,9 +235,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         return true
     }
 
-    private func handleRightOption(isPressed: Bool) {
-        guard isPressed != isRightOptionDown else { return }
-        isRightOptionDown = isPressed
+    private func handlePushToTalk(isPressed: Bool) {
+        guard isPressed != isHotkeyKeyDown else { return }
+        isHotkeyKeyDown = isPressed
 
         if isPressed {
             guard !recorder.isRecording, !isBusy else { return }
@@ -193,23 +265,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         do {
             try recorder.start()
-            setState(title: "Запись… отпусти правый ⌥", symbol: "waveform.circle.fill")
-            toggleMenuItem.title = "Остановить и распознать"
+            DictationOverlayManager.shared.showRecording(recorder: recorder)
+            let loc = LocalizationManager.shared
+            setState(title: loc.string("menu_recording"), symbol: "waveform.circle.fill")
         } catch {
-            showError("Не удалось начать запись", details: error.localizedDescription)
+            showError(LocalizationManager.shared.string("err_rec_failed"), details: error.localizedDescription)
         }
     }
 
     private func stopAndTranscribe() {
-        guard let recording = recorder.stop() else { return }
+        guard let recording = recorder.stop() else {
+            DictationOverlayManager.shared.hide()
+            return
+        }
         isBusy = true
         toggleMenuItem.isEnabled = false
+        DictationOverlayManager.shared.showTranscribing(recorder: recorder)
+        let loc = LocalizationManager.shared
         setState(
-            title: String(format: "Распознаю запись %.1f с…", recording.duration),
+            title: loc.string("menu_transcribing"),
             symbol: "ellipsis.circle"
         )
 
         Task {
+            defer {
+                DictationOverlayManager.shared.hide()
+            }
             do {
                 guard recording.duration >= 0.5 else {
                     throw DictationError.recordingTooShort
@@ -220,15 +301,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     dictionary: dictionaryStore.entries
                 )
                 try TextInjector.type(text)
-                setState(title: "Готово", symbol: "checkmark.circle")
+                setState(title: loc.string("menu_ready"), symbol: "checkmark.circle")
             } catch {
-                showError("Ошибка диктовки", details: error.localizedDescription)
+                showError("SwiftVoice", details: error.localizedDescription)
             }
 
             try? FileManager.default.removeItem(at: recording.url)
             isBusy = false
             toggleMenuItem.isEnabled = true
-            toggleMenuItem.title = "Начать диктовку"
+            toggleMenuItem.title = "\(loc.string("menu_ptt_hint")): \(HotkeyManager.shared.hotkey.displayString)"
             refreshConfigurationStatus()
         }
     }
@@ -242,7 +323,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func preserveDiagnosticRecording(_ sourceURL: URL) throws {
         let support = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("Library/Application Support/Jarvis", isDirectory: true)
+            .appendingPathComponent("Library/Application Support/SwiftVoice", isDirectory: true)
         try FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
         let destination = support.appendingPathComponent("latest.wav")
         if FileManager.default.fileExists(atPath: destination.path) {
@@ -252,8 +333,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func selectWhisperExecutable() {
+        let loc = LocalizationManager.shared
         let panel = NSOpenPanel()
-        panel.title = "Выбери исполняемый файл whisper-cli"
+        panel.title = loc.string("dlg_choose_whisper")
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
         if panel.runModal() == .OK, let url = panel.url {
@@ -263,8 +345,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     @objc private func selectModel() {
+        let loc = LocalizationManager.shared
         let panel = NSOpenPanel()
-        panel.title = "Выбери модель Whisper в формате GGML"
+        panel.title = loc.string("dlg_choose_model")
         panel.allowedContentTypes = []
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = false
@@ -280,18 +363,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             try AudioDevices.setDefaultInputDevice(AudioDeviceID(number.uint32Value))
             refreshMicrophoneMenu()
         } catch {
-            showError("Не удалось выбрать микрофон", details: error.localizedDescription)
+            showError("SwiftVoice", details: error.localizedDescription)
         }
     }
 
     private func refreshMicrophoneMenu() {
+        let loc = LocalizationManager.shared
         let devices = AudioDevices.inputDevices()
         let active = AudioDevices.defaultInputDevice()
-        microphoneMenuItem?.title = "Микрофон: \(active?.name ?? "не выбран")"
+        microphoneMenuItem?.title = "\(loc.string("menu_mic_prefix")) \(active?.name ?? loc.string("menu_mic_unknown"))"
 
         let submenu = NSMenu()
         if devices.isEmpty {
-            let empty = NSMenuItem(title: "Входные устройства не найдены", action: nil, keyEquivalent: "")
+            let empty = NSMenuItem(title: loc.string("menu_mic_unknown"), action: nil, keyEquivalent: "")
             empty.isEnabled = false
             submenu.addItem(empty)
         } else {
@@ -311,10 +395,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func refreshConfigurationStatus() {
+        let loc = LocalizationManager.shared
         if transcriber.isConfigured {
-            setState(title: "Готово · удерживай правый ⌥", symbol: "waveform.circle")
+            setState(title: loc.string("menu_ready"), symbol: "waveform.circle")
         } else {
-            setState(title: "Нужны whisper-cli и модель", symbol: "exclamationmark.circle")
+            setState(title: loc.string("err_missing_config"), symbol: "exclamationmark.circle")
         }
     }
 
@@ -325,14 +410,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func presentConfigurationError() {
+        let loc = LocalizationManager.shared
         showError(
-            "Диктовка не настроена",
-            details: "Через меню выбери собранный whisper-cli и файл модели GGML."
+            "SwiftVoice",
+            details: loc.string("err_missing_config")
         )
     }
 
     private func showError(_ message: String, details: String) {
-        setState(title: "Ошибка", symbol: "xmark.circle")
         let alert = NSAlert()
         alert.messageText = message
         alert.informativeText = details

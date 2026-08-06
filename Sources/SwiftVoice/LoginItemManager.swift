@@ -12,17 +12,18 @@ enum LoginItemManager {
     }
 
     static var statusDescription: String {
+        let loc = LocalizationManager.shared
         switch SMAppService.mainApp.status {
         case .enabled:
-            return "Включён"
+            return loc.string("status_enabled")
         case .requiresApproval:
-            return "Требуется разрешение в Login Items"
+            return loc.string("status_requires_approval")
         case .notFound:
-            return "Jarvis должен находиться в папке Applications"
+            return loc.string("status_not_found")
         case .notRegistered:
-            return "Выключен"
+            return loc.string("status_disabled")
         @unknown default:
-            return "Неизвестное состояние"
+            return loc.string("status_disabled")
         }
     }
 
@@ -46,7 +47,7 @@ enum LoginItemManager {
         do {
             try SMAppService.mainApp.register()
         } catch {
-            NSLog("Jarvis launch-at-login registration failed: \(error)")
+            NSLog("SwiftVoice launch-at-login registration failed: \(error)")
         }
     }
 }

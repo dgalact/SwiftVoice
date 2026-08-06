@@ -17,6 +17,8 @@ if [[ ! -d "$whisper_dir/.git" ]]; then
   git clone --depth 1 https://github.com/ggml-org/whisper.cpp.git "$whisper_dir"
 fi
 
+rm -rf "$whisper_dir/build"
+
 cmake -S "$whisper_dir" -B "$whisper_dir/build" \
   -DCMAKE_BUILD_TYPE=Release \
   -DWHISPER_METAL=ON

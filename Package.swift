@@ -3,15 +3,15 @@
 import PackageDescription
 
 let package = Package(
-    name: "Jarvis",
+    name: "SwiftVoice",
     platforms: [.macOS(.v14)],
     products: [
-        .executable(name: "Jarvis", targets: ["Jarvis"])
+        .executable(name: "SwiftVoice", targets: ["SwiftVoice"])
     ],
     targets: [
         .executableTarget(
-            name: "Jarvis",
-            path: "Sources/Jarvis",
+            name: "SwiftVoice",
+            path: "Sources/SwiftVoice",
             linkerSettings: [
                 .linkedFramework("AppKit"),
                 .linkedFramework("AVFoundation"),

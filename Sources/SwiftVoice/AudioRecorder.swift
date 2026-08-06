@@ -1,10 +1,13 @@
 import AVFoundation
+import Combine
 import Foundation
 
 @MainActor
-final class AudioRecorder {
+final class AudioRecorder: ObservableObject {
     private var recorder: AVAudioRecorder?
+    private var levelTimer: Timer?
     private(set) var recordingURL: URL?
+    @Published var audioLevel: Float = 0.0
 
     var isRecording: Bool {
         recorder?.isRecording == true
@@ -16,7 +19,7 @@ final class AudioRecorder {
         }
 
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("jarvis-\(UUID().uuidString)")
+            .appendingPathComponent("swiftvoice-\(UUID().uuidString)")
             .appendingPathExtension("wav")
 
         let settings: [String: Any] = [
@@ -29,15 +32,30 @@ final class AudioRecorder {
         ]
 
         let recorder = try AVAudioRecorder(url: url, settings: settings)
+        recorder.isMeteringEnabled = true
         guard recorder.prepareToRecord(), recorder.record() else {
             throw DictationError.recordingFailed
         }
 
         self.recorder = recorder
         recordingURL = url
+
+        levelTimer?.invalidate()
+        levelTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, let recorder = self.recorder, recorder.isRecording else { return }
+                recorder.updateMeters()
+                let power = recorder.averagePower(forChannel: 0)
+                let normalized = max(0, min(1, (power + 60) / 60))
+                self.audioLevel = normalized
+            }
+        }
     }
 
     func stop() -> Recording? {
+        levelTimer?.invalidate()
+        levelTimer = nil
+        audioLevel = 0.0
         let duration = recorder?.currentTime ?? 0
         recorder?.stop()
         recorder = nil
@@ -61,21 +79,22 @@ enum DictationError: LocalizedError {
     case accessibilityPermissionMissing
 
     var errorDescription: String? {
+        let loc = LocalizationManager.shared
         switch self {
         case .recordingFailed:
-            return "Аудиоустройство не начало запись."
+            return loc.string("err_rec_failed")
         case .microphonePermissionMissing:
-            return "Разреши Jarvis доступ к микрофону в Privacy & Security → Microphone."
+            return loc.string("err_mic_perm")
         case .recordingTooShort:
-            return "Запись короче 0,5 секунды. Удерживай паузу между включением и выключением диктовки."
+            return loc.string("err_rec_short")
         case .missingConfiguration:
-            return "Не выбраны whisper-cli или модель."
+            return loc.string("err_missing_config")
         case let .transcriptionFailed(details):
-            return "whisper-cli завершился с ошибкой: \(details)"
+            return "\(loc.string("err_transcription_failed")) \(details)"
         case .emptyTranscription:
-            return "Модель не вернула текст."
+            return loc.string("err_empty_transcription")
         case .accessibilityPermissionMissing:
-            return "Разреши Jarvis управлять компьютером в Privacy & Security → Accessibility."
+            return loc.string("err_acc_perm")
         }
     }
 }

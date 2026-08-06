@@ -1,146 +1,105 @@
-# Jarvis
+# SwiftVoice
 
-Минимальное локальное приложение для диктовки на macOS:
+> A minimal, fast, and 100% private local Push-to-Talk voice dictation app for macOS powered by `whisper.cpp` and Apple Metal GPU acceleration.
+
+🌐 **Language:** [English](README.md) | [Русский](README_RU.md)
+
+---
 
 ```text
-удержание правого ⌥ → запись → отпускание → whisper.cpp → текст в активное поле
+Hold Hotkey (e.g. Right ⌥ or ⌘B) → Floating Live Waveform HUD → Release → whisper.cpp → Text injected
 ```
 
-Аудио и распознавание остаются на Mac. Приложение не использует сетевые API,
-не хранит историю диктовок и не слушает микрофон в фоне.
+Audio recording and speech recognition take place entirely on your Mac. SwiftVoice uses no external network APIs, stores no dictation history, and does not listen to your microphone in the background.
 
-Приложение использует собственный значок робота Jarvis; исходный PNG,
-прозрачная версия и macOS ICNS находятся в `Resources/`.
+---
 
-## Восстановление на новом Mac
+## ✨ Features
 
-Репозиторий хранит исходники и сценарии сборки. Скомпилированные файлы,
-`whisper.cpp` и модель Large v3 Turbo не коммитятся: сценарий подготовки
-скачивает и собирает их локально.
+- **Push-to-Talk Dictation**: Hold your hotkey to record audio, release to transcribe and automatically type text into whichever application is currently focused.
+- **Floating Dictation HUD Overlay**: Glassmorphic pill window near the top of the display with real-time audio level waveform animations during dictation (can be toggled in Settings).
+- **In-App Whisper Model Selector & Downloader**: Easily switch between 6 official Whisper models (`Tiny`, `Base`, `Small`, `Medium`, `Large v3`, `Large v3 Turbo`) or custom files. Download missing models directly inside Settings with progress tracking.
+- **Custom Hotkey Recorder**: Bind any single modifier (`Right ⌥`, `Left ⌃`, `Fn`) or key combination (`⌘B`, `⌥Space`, `⌃Shift+V`) with real-time macOS system conflict detection.
+- **Dictionary Import & Export**: Full **JSON** and **CSV/TXT** import and export support for backing up, sharing, or restoring custom vocabulary terms and aliases.
+- **100% Offline & Private**: All speech processing is executed locally via `whisper.cpp` with Apple Silicon Metal GPU acceleration. Zero network calls.
+- **Multi-Language UI**: Full localization support for English, Russian, Ukrainian, and System Default with instant UI/menu updates.
+- **Native macOS Experience**: Built natively using Swift 6 & SwiftUI. Features menu bar status indicator, microphone device switcher, native launch-at-login (`SMAppService`), and About window.
 
-Требования:
+---
 
-- macOS 14 или новее на Apple Silicon;
-- Xcode Command Line Tools;
-- CMake;
+## 📋 Requirements
+
+- macOS 14.0 (Sonoma) or newer on Apple Silicon (M1/M2/M3/M4).
+- Xcode Command Line Tools (`xcode-select --install`).
+- CMake.
 - Git.
 
-Клонирование на Mac с настроенным GitHub SSH-ключом:
+---
 
+## 🚀 Quick Start (Automated Setup)
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/dgalact/SwiftVoice.git
+   cd SwiftVoice
+   ```
+
+2. Run setup:
+   ```bash
+   chmod +x scripts/*.sh
+   ./scripts/setup.sh
+   ```
+   *The `setup.sh` script automatically compiles `whisper.cpp` with Metal acceleration, builds SwiftVoice, and installs it to `/Applications/SwiftVoice.app`. You can select or download your preferred Whisper model directly inside the app Settings.*
+
+3. Launch SwiftVoice:
+   ```bash
+   open "/Applications/SwiftVoice.app"
+   ```
+
+4. Grant macOS Permissions when prompted:
+   - **Microphone**: Required for audio capture during dictation.
+   - **Accessibility**: Required to inject recognized text into active applications.
+
+---
+
+## 🛠️ Build & Installation Scripts
+
+### Build Application
 ```bash
-git clone git@github.com:dgalact/Jarvis.git
-```
-
-Либо через HTTPS с авторизацией GitHub:
-
-```bash
-git clone https://github.com/dgalact/Jarvis.git
-```
-
-После клонирования:
-
-```bash
-cd Jarvis
-chmod +x scripts/*.sh
-./scripts/setup.sh
-open "$HOME/Applications/Jarvis.app"
-```
-
-`setup.sh` скачает и соберёт `whisper.cpp`, загрузит модель, соберёт Jarvis,
-установит его в `~/Applications` и сохранит локальные пути распознавания.
-
-## Сборка приложения
-
-```bash
-chmod +x scripts/*.sh
 ./scripts/build-app.sh
-open "dist/Jarvis.app"
+open "dist/SwiftVoice.app"
 ```
 
-Установка рабочей копии:
-
+### Install Application
 ```bash
 ./scripts/install-app.sh
-open "$HOME/Applications/Jarvis.app"
+open "/Applications/SwiftVoice.app"
 ```
 
-Jarvis устанавливается в `~/Applications`, а исходная сборка остаётся в
-`dist/`.
-
-При первом запуске macOS запросит:
-
-- доступ к микрофону;
-- Accessibility для ввода распознанного текста.
-
-## Подготовка whisper.cpp
-
-Bootstrap хранит исходники и сборку внутри этого проекта:
-
+### Bootstrap `whisper.cpp`
 ```bash
 ./scripts/bootstrap-whisper.sh
 ```
+*Cleanly removes `vendor/whisper.cpp/build` before configuring CMake to ensure clean builds.*
 
-Для сборки требуется CMake. Скрипт не устанавливает его автоматически и не
-изменяет системную конфигурацию.
+---
 
-После сборки загрузите модель:
+## ⚙️ Configuration
 
-```bash
-vendor/whisper.cpp/models/download-ggml-model.sh large-v3-turbo
-```
+Open Settings via the Menu Bar icon, `Command+,`, or by opening `SwiftVoice.app` again.
 
-Через меню приложения выберите:
+- **General**: Interface Language picker, interactive Push-to-Talk hotkey recorder, Floating Dictation Overlay toggle, Launch-at-Login toggle, and active microphone selector.
+- **Dictionary**: Custom domain terminology, alias replacements, and **Import/Export** buttons (JSON & CSV).
+- **Recognition**: In-app Whisper model selector & downloader, paths to `whisper-cli` executable and model file, language selection, and privacy information.
+- **About**: Version information (`v1.0.0`), license details, and project repository links.
 
-1. `vendor/whisper.cpp/build/bin/whisper-cli`;
-2. `vendor/whisper.cpp/models/ggml-large-v3-turbo.bin`.
-
-Эти параметры находятся в `Настройки → Распознавание`.
-
-## Использование
-
-1. Поставьте курсор в поле ввода.
-2. При необходимости выберите микрофон в меню приложения. Выбор меняет
-   системное устройство ввода macOS.
-3. Удерживайте правый `⌥` и продиктуйте текст.
-4. Отпустите правый `⌥`.
-5. После распознавания текст будет напечатан в активное поле.
-
-## Настройки
-
-Окно открывается через `Настройки…` в меню-баре, `⌘,` или повторным запуском
-`Jarvis.app`.
-
-- `Основные` — текущий push-to-talk, автозагрузка и выбор системного микрофона.
-- `Словарь` — правильное написание терминов и варианты их произношения.
-- `Распознавание` — пути к `whisper-cli` и модели, язык и сведения о
-  конфиденциальности.
-
-Словарь хранится отдельно:
-
+The dictionary file is stored at:
 ```text
-~/Library/Application Support/Jarvis/dictionary.json
+~/Library/Application Support/SwiftVoice/dictionary.json
 ```
 
-Jarvis передаёт правильные написания в initial prompt Whisper, а после
-распознавания заменяет найденные варианты произношения на канонический текст.
-Изменения словаря применяются без пересборки приложения.
+---
 
-## Границы MVP
+## 📄 License
 
-- Push-to-talk пока фиксирован на правом `⌥`; левый `⌥` работает обычно.
-- Текст вводится через события клавиатуры, без изменения буфера обмена.
-- Jarvis подписан локальной ad-hoc подписью. После пересборки macOS может
-  потребовать сбросить и заново выдать разрешение Accessibility.
-- Автозагрузка реализована нативно через `SMAppService` и запускает
-  установленную копию из `~/Applications/Jarvis.app`.
-
-## Проверенное окружение
-
-- MacBook Pro M3 Pro, macOS 27 beta;
-- AirPods Pro как системный микрофон;
-- Whisper Large v3 Turbo;
-- `whisper.cpp` с Metal;
-- русская диктовка, выбор микрофона, right-Option push-to-talk и вставка в
-  активное поле проверены end-to-end 2026-07-28.
-- пользовательский словарь проверен на `FortiGate`, `VPN` и `MikroTik`;
-  каноническое написание сохраняется при повторных упоминаниях.
+Distributed under the [MIT License](LICENSE).

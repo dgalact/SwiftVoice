@@ -4,7 +4,6 @@ set -euo pipefail
 project_dir=${0:A:h:h}
 whisper_dir="$project_dir/vendor/whisper.cpp"
 whisper_cli="$whisper_dir/build/bin/whisper-cli"
-model="$whisper_dir/models/ggml-large-v3-turbo.bin"
 
 for command_name in git cmake swift; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
@@ -15,19 +14,14 @@ for command_name in git cmake swift; do
 done
 
 "$project_dir/scripts/bootstrap-whisper.sh"
-
-if [[ ! -f "$model" ]]; then
-  "$whisper_dir/models/download-ggml-model.sh" large-v3-turbo
-fi
-
 "$project_dir/scripts/build-app.sh"
 "$project_dir/scripts/install-app.sh"
 
-defaults write local.dgalact.jarvis whisperExecutablePath "$whisper_cli"
-defaults write local.dgalact.jarvis whisperModelPath "$model"
+defaults write org.swiftvoice.mac whisperExecutablePath "$whisper_cli"
 
 echo
-echo "Jarvis установлен: $HOME/Applications/Jarvis.app"
+echo "SwiftVoice установлен: /Applications/SwiftVoice.app"
+echo "Выбери или скачай модель Whisper прямо в Настройках приложения (Настройки -> Распознавание)."
 echo "При первом запуске выдай доступ к микрофону и Accessibility."
 echo "Запуск:"
-echo "open \"$HOME/Applications/Jarvis.app\""
+echo "open \"/Applications/SwiftVoice.app\""
