@@ -2,7 +2,7 @@
 
 > Минимальное, быстрое и на 100% локальное приложение для голосовой диктовки на macOS, работающее на базе `whisper.cpp` с ускорением Apple Metal GPU.
 
-🌐 **Language:** [English](README.md) | [Русский](README_RU.md)
+🌐 **Language:** [English](README.md) | [Українська](README_UK.md) | [Русский](README_RU.md)
 
 ---
 
