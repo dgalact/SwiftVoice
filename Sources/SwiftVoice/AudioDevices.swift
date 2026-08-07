@@ -118,6 +118,25 @@ enum AudioDevices {
         return buffers.reduce(0) { $0 + Int($1.mNumberChannels) } > 0
     }
 
+    static func isCurrentInputBluetoothOrHeadset() -> Bool {
+        guard let defaultDevice = defaultInputDevice() else { return false }
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyTransportType,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        var transportType: UInt32 = 0
+        var size = UInt32(MemoryLayout<UInt32>.size)
+        if AudioObjectGetPropertyData(defaultDevice.id, &address, 0, nil, &size, &transportType) == noErr {
+            if transportType == kAudioDeviceTransportTypeBluetooth ||
+               transportType == kAudioDeviceTransportTypeBluetoothLE {
+                return true
+            }
+        }
+        let lowerName = defaultDevice.name.lowercased()
+        return lowerName.contains("airpods") || lowerName.contains("bluetooth") || lowerName.contains("headset") || lowerName.contains("headphones")
+    }
+
     private static func deviceName(_ id: AudioDeviceID) -> String? {
         var address = AudioObjectPropertyAddress(
             mSelector: kAudioObjectPropertyName,

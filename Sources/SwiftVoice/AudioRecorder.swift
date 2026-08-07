@@ -23,10 +23,12 @@ final class AudioRecorder: ObservableObject {
         let engine = AVAudioEngine()
         let inputNode = engine.inputNode
 
-        do {
-            try inputNode.setVoiceProcessingEnabled(true)
-        } catch {
-            print("[SwiftVoice] Voice processing not supported on this device: \(error)")
+        if !AudioDevices.isCurrentInputBluetoothOrHeadset() {
+            do {
+                try inputNode.setVoiceProcessingEnabled(true)
+            } catch {
+                print("[SwiftVoice] Voice processing not supported on this device: \(error)")
+            }
         }
 
         let url = FileManager.default.temporaryDirectory
