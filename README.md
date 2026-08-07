@@ -12,6 +12,18 @@ Hold Hotkey (e.g. Right ⌥ or ⌘B) → Floating Live Waveform HUD → Release 
 
 Audio recording and speech recognition take place entirely on your Mac. SwiftVoice uses no external network APIs, stores no dictation history, and does not listen to your microphone in the background.
 
+## 📸 Screenshots
+
+<div align="center">
+  <img src="docs/images/settings_general.png" width="48%" alt="General Settings" />
+  <img src="docs/images/settings_dictionary.png" width="48%" alt="Dictionary Settings" />
+  <br/><br/>
+  <img src="docs/images/settings_recognition.png" width="48%" alt="Model & Recognition Settings" />
+  <img src="docs/images/settings_about.png" width="48%" alt="About SwiftVoice" />
+  <br/><br/>
+  <img src="docs/images/dictation_hud.png" width="45%" alt="Floating Dictation HUD Overlay" />
+</div>
+
 ---
 
 ## ✨ Features

@@ -12,6 +12,18 @@
 
 Аудио и распознавание остаются исключительно на вашем Mac. SwiftVoice не использует сетевые API, не хранит историю диктовок и не слушает микрофон в фоне.
 
+## 📸 Скриншоты интерфейса
+
+<div align="center">
+  <img src="docs/images/settings_general.png" width="48%" alt="Основные настройки" />
+  <img src="docs/images/settings_dictionary.png" width="48%" alt="Словарь терминов" />
+  <br/><br/>
+  <img src="docs/images/settings_recognition.png" width="48%" alt="Модель и Распознавание" />
+  <img src="docs/images/settings_about.png" width="48%" alt="О программе" />
+  <br/><br/>
+  <img src="docs/images/dictation_hud.png" width="45%" alt="Плавающий HUD-индикатор диктовки" />
+</div>
+
 ---
 
 ## ✨ Возможности
