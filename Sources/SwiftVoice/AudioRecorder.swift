@@ -34,23 +34,7 @@ final class AudioRecorder: ObservableObject {
             .appendingPathExtension("wav")
 
         let inputFormat = inputNode.outputFormat(forBus: 0)
-
-        let recordSettings: [String: Any] = [
-            AVFormatIDKey: Int(kAudioFormatLinearPCM),
-            AVSampleRateKey: 48_000,
-            AVNumberOfChannelsKey: 1,
-            AVLinearPCMBitDepthKey: 16,
-            AVLinearPCMIsFloatKey: false,
-            AVLinearPCMIsBigEndianKey: false
-        ]
-
-        let file = try AVAudioFile(forWriting: url, settings: recordSettings)
-
-        guard let fileFormat = AVAudioFormat(settings: recordSettings) else {
-            throw DictationError.recordingFailed
-        }
-
-        let converter = AVAudioConverter(from: inputFormat, to: fileFormat)
+        let file = try AVAudioFile(forWriting: url, settings: inputFormat.settings)
 
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] buffer, _ in
             guard let self = self else { return }
@@ -70,26 +54,11 @@ final class AudioRecorder: ObservableObject {
                 }
             }
 
+            guard let bufferCopy = buffer.copy() as? AVAudioPCMBuffer else { return }
+
             self.writeQueue.async {
                 guard let file = self.audioFile else { return }
-                let capacity = AVAudioFrameCount(Double(buffer.frameLength) * (48_000.0 / inputFormat.sampleRate))
-                guard let convertedBuffer = AVAudioPCMBuffer(pcmFormat: fileFormat, frameCapacity: capacity) else { return }
-
-                var error: NSError?
-                var inputConsumed = false
-                converter?.convert(to: convertedBuffer, error: &error, withInputFrom: { _, outStatus in
-                    if inputConsumed {
-                        outStatus.pointee = .noDataNow
-                        return nil
-                    }
-                    outStatus.pointee = .haveData
-                    inputConsumed = true
-                    return buffer
-                })
-
-                if error == nil && convertedBuffer.frameLength > 0 {
-                    try? file.write(from: convertedBuffer)
-                }
+                try? file.write(from: bufferCopy)
             }
         }
 
