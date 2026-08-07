@@ -21,7 +21,9 @@ Audio recording and speech recognition take place entirely on your Mac. SwiftVoi
 - **In-App Whisper Model Selector & Downloader**: Easily switch between 6 official Whisper models (`Tiny`, `Base`, `Small`, `Medium`, `Large v3`, `Large v3 Turbo`) or custom files. Download missing models directly inside Settings with progress tracking.
 - **Custom Hotkey Recorder**: Bind any single modifier (`Right ⌥`, `Left ⌃`, `Fn`) or key combination (`⌘B`, `⌥Space`, `⌃Shift+V`) with real-time macOS system conflict detection.
 - **Dictionary Import & Export**: Full **JSON** and **CSV/TXT** import and export support for backing up, sharing, or restoring custom vocabulary terms and aliases.
-- **100% Offline & Private**: All speech processing is executed locally via `whisper.cpp` with Apple Silicon Metal GPU acceleration. Zero network calls.
+- **Acoustic Echo Cancellation (AEC)**: Apple Native Voice Processing automatically filters out background media (YouTube, Spotify, video players) playing through Mac speakers during dictation without modifying system volume.
+- **Seamless AirPods & Headset Support**: Instant dictation activation with 0ms audio dropouts, zero background music playback stutter, and full support for closed MacBook lid (clamshell mode) with external displays.
+- **Dynamic Microphone Route Recovery**: CoreAudio route monitoring automatically updates active microphone routes when plugging or unplugging AirPods, headsets, or USB microphones.
 - **Multi-Language UI**: Full localization support for English, Russian, Ukrainian, and System Default with instant UI/menu updates.
 - **Native macOS Experience**: Built natively using Swift 6 & SwiftUI. Features menu bar status indicator, microphone device switcher, native launch-at-login (`SMAppService`), and About window.
 
