@@ -1,12 +1,13 @@
-import AVFoundation
+@preconcurrency import AVFoundation
 import Combine
 import Foundation
 
 @MainActor
 final class AudioRecorder: ObservableObject {
     private var audioEngine: AVAudioEngine?
-    private var audioFile: AVAudioFile?
+    private nonisolated(unsafe) var audioFile: AVAudioFile?
     private var startTime: Date?
+    private let writeQueue = DispatchQueue(label: "org.swiftvoice.audiowrite", qos: .userInitiated)
     private(set) var recordingURL: URL?
     @Published var audioLevel: Float = 0.0
 
@@ -69,23 +70,26 @@ final class AudioRecorder: ObservableObject {
                 }
             }
 
-            let capacity = AVAudioFrameCount(Double(buffer.frameLength) * (48_000.0 / inputFormat.sampleRate))
-            guard let convertedBuffer = AVAudioPCMBuffer(pcmFormat: fileFormat, frameCapacity: capacity) else { return }
+            self.writeQueue.async {
+                guard let file = self.audioFile else { return }
+                let capacity = AVAudioFrameCount(Double(buffer.frameLength) * (48_000.0 / inputFormat.sampleRate))
+                guard let convertedBuffer = AVAudioPCMBuffer(pcmFormat: fileFormat, frameCapacity: capacity) else { return }
 
-            var error: NSError?
-            var inputConsumed = false
-            converter?.convert(to: convertedBuffer, error: &error, withInputFrom: { _, outStatus in
-                if inputConsumed {
-                    outStatus.pointee = .noDataNow
-                    return nil
+                var error: NSError?
+                var inputConsumed = false
+                converter?.convert(to: convertedBuffer, error: &error, withInputFrom: { _, outStatus in
+                    if inputConsumed {
+                        outStatus.pointee = .noDataNow
+                        return nil
+                    }
+                    outStatus.pointee = .haveData
+                    inputConsumed = true
+                    return buffer
+                })
+
+                if error == nil && convertedBuffer.frameLength > 0 {
+                    try? file.write(from: convertedBuffer)
                 }
-                outStatus.pointee = .haveData
-                inputConsumed = true
-                return buffer
-            })
-
-            if error == nil && convertedBuffer.frameLength > 0 {
-                try? file.write(from: convertedBuffer)
             }
         }
 
@@ -105,6 +109,8 @@ final class AudioRecorder: ObservableObject {
         engine.inputNode.removeTap(onBus: 0)
         try? engine.inputNode.setVoiceProcessingEnabled(false)
         engine.stop()
+
+        writeQueue.sync {}
 
         self.audioEngine = nil
         self.audioFile = nil
