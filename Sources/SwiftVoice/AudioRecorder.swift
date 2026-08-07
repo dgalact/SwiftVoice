@@ -6,35 +6,18 @@ import Foundation
 final class AudioRecorder: ObservableObject {
     private var audioEngine: AVAudioEngine?
     private nonisolated(unsafe) var audioFile: AVAudioFile?
-    private nonisolated(unsafe) var isCapturing = false
     private var startTime: Date?
     private let writeQueue = DispatchQueue(label: "org.swiftvoice.audiowrite", qos: .userInitiated)
     private(set) var recordingURL: URL?
     @Published var audioLevel: Float = 0.0
     @Published var isRecording = false
 
-    init() {
-        setupConfigurationObserver()
-        ensureWarmEngine()
-    }
-
-    private func setupConfigurationObserver() {
-        NotificationCenter.default.addObserver(
-            forName: .AVAudioEngineConfigurationChange,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in
-                print("[SwiftVoice] Audio engine configuration changed (device connected/disconnected). Re-warming engine...")
-                self?.resetEngine()
-                self?.ensureWarmEngine()
-            }
+    func start() throws {
+        guard AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else {
+            throw DictationError.microphonePermissionMissing
         }
-    }
 
-    func ensureWarmEngine() {
-        guard audioEngine == nil else { return }
-        guard AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else { return }
+        stopEngine()
 
         let engine = AVAudioEngine()
         let inputNode = engine.inputNode
@@ -43,100 +26,65 @@ final class AudioRecorder: ObservableObject {
             try? inputNode.setVoiceProcessingEnabled(true)
         }
 
-        let inputFormat = inputNode.outputFormat(forBus: 0)
-        guard inputFormat.sampleRate > 0 && inputFormat.channelCount > 0 else { return }
-
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] buffer, _ in
-            guard let self = self else { return }
-
-            if self.isCapturing {
-                if let channelData = buffer.floatChannelData?[0] {
-                    let channelDataPointer = channelData
-                    let frameLength = Int(buffer.frameLength)
-                    var sum: Float = 0.0
-                    for i in 0..<frameLength {
-                        let sample = channelDataPointer[i]
-                        sum += sample * sample
-                    }
-                    let rms = sqrt(sum / Float(max(1, frameLength)))
-                    let level = max(0.0, min(1.0, rms * 6.0))
-                    Task { @MainActor in
-                        self.audioLevel = level
-                    }
-                }
-
-                guard let bufferCopy = buffer.copy() as? AVAudioPCMBuffer else { return }
-                self.writeQueue.async {
-                    guard let file = self.audioFile else { return }
-                    try? file.write(from: bufferCopy)
-                }
-            } else {
-                Task { @MainActor in
-                    if self.audioLevel != 0.0 {
-                        self.audioLevel = 0.0
-                    }
-                }
-            }
-        }
-
-        engine.prepare()
-        do {
-            try engine.start()
-            self.audioEngine = engine
-        } catch {
-            print("[SwiftVoice] Failed to start warm audio engine: \(error)")
-        }
-    }
-
-    func start() throws {
-        guard AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else {
-            throw DictationError.microphonePermissionMissing
-        }
-
-        if audioEngine == nil || audioEngine?.isRunning == false {
-            resetEngine()
-            ensureWarmEngine()
-        }
-
-        guard let engine = audioEngine, engine.isRunning else {
-            throw DictationError.recordingFailed
-        }
-
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("swiftvoice-\(UUID().uuidString)")
             .appendingPathExtension("wav")
 
-        let inputFormat = engine.inputNode.outputFormat(forBus: 0)
-
-        if inputFormat.sampleRate == 0 || inputFormat.channelCount == 0 {
-            resetEngine()
-            ensureWarmEngine()
-        }
-
-        guard let currentEngine = audioEngine, currentEngine.isRunning else {
+        let inputFormat = inputNode.outputFormat(forBus: 0)
+        guard inputFormat.sampleRate > 0 && inputFormat.channelCount > 0 else {
             throw DictationError.recordingFailed
         }
 
-        let validFormat = currentEngine.inputNode.outputFormat(forBus: 0)
-        let file = try AVAudioFile(forWriting: url, settings: validFormat.settings)
+        let file = try AVAudioFile(forWriting: url, settings: inputFormat.settings)
 
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] buffer, _ in
+            guard let self = self else { return }
+
+            if let channelData = buffer.floatChannelData?[0] {
+                let channelDataPointer = channelData
+                let frameLength = Int(buffer.frameLength)
+                var sum: Float = 0.0
+                for i in 0..<frameLength {
+                    let sample = channelDataPointer[i]
+                    sum += sample * sample
+                }
+                let rms = sqrt(sum / Float(max(1, frameLength)))
+                let level = max(0.0, min(1.0, rms * 6.0))
+                Task { @MainActor in
+                    self.audioLevel = level
+                }
+            }
+
+            guard let bufferCopy = buffer.copy() as? AVAudioPCMBuffer else { return }
+            self.writeQueue.async {
+                guard let file = self.audioFile else { return }
+                try? file.write(from: bufferCopy)
+            }
+        }
+
+        engine.prepare()
+        try engine.start()
+
+        self.audioEngine = engine
         self.audioFile = file
         self.recordingURL = url
         self.startTime = Date()
-        self.isCapturing = true
         self.isRecording = true
     }
 
     func stop() -> Recording? {
-        guard isCapturing else { return nil }
+        guard isRecording, let engine = audioEngine, engine.isRunning else { return nil }
 
-        isCapturing = false
         isRecording = false
-
         writeQueue.sync {}
 
         let duration = startTime.map { Date().timeIntervalSince($0) } ?? 0
 
+        engine.inputNode.removeTap(onBus: 0)
+        try? engine.inputNode.setVoiceProcessingEnabled(false)
+        engine.stop()
+
+        self.audioEngine = nil
         self.audioFile = nil
         self.audioLevel = 0.0
 
@@ -144,14 +92,16 @@ final class AudioRecorder: ObservableObject {
         return Recording(url: recordingURL, duration: duration)
     }
 
-    func resetEngine() {
+    private func stopEngine() {
         if let engine = audioEngine {
             engine.inputNode.removeTap(onBus: 0)
+            try? engine.inputNode.setVoiceProcessingEnabled(false)
             engine.stop()
         }
         audioEngine = nil
-        isCapturing = false
+        audioFile = nil
         isRecording = false
+        audioLevel = 0.0
     }
 }
 
