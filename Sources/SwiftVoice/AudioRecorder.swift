@@ -14,7 +14,22 @@ final class AudioRecorder: ObservableObject {
     @Published var isRecording = false
 
     init() {
+        setupConfigurationObserver()
         ensureWarmEngine()
+    }
+
+    private func setupConfigurationObserver() {
+        NotificationCenter.default.addObserver(
+            forName: .AVAudioEngineConfigurationChange,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                print("[SwiftVoice] Audio engine configuration changed (device connected/disconnected). Re-warming engine...")
+                self?.resetEngine()
+                self?.ensureWarmEngine()
+            }
+        }
     }
 
     func ensureWarmEngine() {
@@ -29,6 +44,7 @@ final class AudioRecorder: ObservableObject {
         }
 
         let inputFormat = inputNode.outputFormat(forBus: 0)
+        guard inputFormat.sampleRate > 0 && inputFormat.channelCount > 0 else { return }
 
         inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] buffer, _ in
             guard let self = self else { return }
@@ -77,7 +93,10 @@ final class AudioRecorder: ObservableObject {
             throw DictationError.microphonePermissionMissing
         }
 
-        ensureWarmEngine()
+        if audioEngine == nil || audioEngine?.isRunning == false {
+            resetEngine()
+            ensureWarmEngine()
+        }
 
         guard let engine = audioEngine, engine.isRunning else {
             throw DictationError.recordingFailed
@@ -88,7 +107,18 @@ final class AudioRecorder: ObservableObject {
             .appendingPathExtension("wav")
 
         let inputFormat = engine.inputNode.outputFormat(forBus: 0)
-        let file = try AVAudioFile(forWriting: url, settings: inputFormat.settings)
+
+        if inputFormat.sampleRate == 0 || inputFormat.channelCount == 0 {
+            resetEngine()
+            ensureWarmEngine()
+        }
+
+        guard let currentEngine = audioEngine, currentEngine.isRunning else {
+            throw DictationError.recordingFailed
+        }
+
+        let validFormat = currentEngine.inputNode.outputFormat(forBus: 0)
+        let file = try AVAudioFile(forWriting: url, settings: validFormat.settings)
 
         self.audioFile = file
         self.recordingURL = url
