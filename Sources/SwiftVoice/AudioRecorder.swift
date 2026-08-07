@@ -4,13 +4,14 @@ import Foundation
 
 @MainActor
 final class AudioRecorder: ObservableObject {
-    private var recorder: AVAudioRecorder?
-    private var levelTimer: Timer?
+    private var audioEngine: AVAudioEngine?
+    private var audioFile: AVAudioFile?
+    private var startTime: Date?
     private(set) var recordingURL: URL?
     @Published var audioLevel: Float = 0.0
 
     var isRecording: Bool {
-        recorder?.isRecording == true
+        audioEngine?.isRunning == true
     }
 
     func start() throws {
@@ -18,11 +19,22 @@ final class AudioRecorder: ObservableObject {
             throw DictationError.microphonePermissionMissing
         }
 
+        let engine = AVAudioEngine()
+        let inputNode = engine.inputNode
+
+        do {
+            try inputNode.setVoiceProcessingEnabled(true)
+        } catch {
+            print("[SwiftVoice] Voice processing not supported on this device: \(error)")
+        }
+
         let url = FileManager.default.temporaryDirectory
             .appendingPathComponent("swiftvoice-\(UUID().uuidString)")
             .appendingPathExtension("wav")
 
-        let settings: [String: Any] = [
+        let inputFormat = inputNode.outputFormat(forBus: 0)
+
+        let recordSettings: [String: Any] = [
             AVFormatIDKey: Int(kAudioFormatLinearPCM),
             AVSampleRateKey: 48_000,
             AVNumberOfChannelsKey: 1,
@@ -31,34 +43,73 @@ final class AudioRecorder: ObservableObject {
             AVLinearPCMIsBigEndianKey: false
         ]
 
-        let recorder = try AVAudioRecorder(url: url, settings: settings)
-        recorder.isMeteringEnabled = true
-        guard recorder.prepareToRecord(), recorder.record() else {
+        let file = try AVAudioFile(forWriting: url, settings: recordSettings)
+
+        guard let fileFormat = AVAudioFormat(settings: recordSettings) else {
             throw DictationError.recordingFailed
         }
 
-        self.recorder = recorder
-        recordingURL = url
+        let converter = AVAudioConverter(from: inputFormat, to: fileFormat)
 
-        levelTimer?.invalidate()
-        levelTimer = Timer.scheduledTimer(withTimeInterval: 0.05, repeats: true) { [weak self] _ in
-            Task { @MainActor in
-                guard let self, let recorder = self.recorder, recorder.isRecording else { return }
-                recorder.updateMeters()
-                let power = recorder.averagePower(forChannel: 0)
-                let normalized = max(0, min(1, (power + 60) / 60))
-                self.audioLevel = normalized
+        inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] buffer, _ in
+            guard let self = self else { return }
+
+            if let channelData = buffer.floatChannelData?[0] {
+                let channelDataPointer = channelData
+                let frameLength = Int(buffer.frameLength)
+                var sum: Float = 0.0
+                for i in 0..<frameLength {
+                    let sample = channelDataPointer[i]
+                    sum += sample * sample
+                }
+                let rms = sqrt(sum / Float(max(1, frameLength)))
+                let level = max(0.0, min(1.0, rms * 6.0))
+                Task { @MainActor in
+                    self.audioLevel = level
+                }
+            }
+
+            let capacity = AVAudioFrameCount(Double(buffer.frameLength) * (48_000.0 / inputFormat.sampleRate))
+            guard let convertedBuffer = AVAudioPCMBuffer(pcmFormat: fileFormat, frameCapacity: capacity) else { return }
+
+            var error: NSError?
+            var inputConsumed = false
+            converter?.convert(to: convertedBuffer, error: &error, withInputFrom: { _, outStatus in
+                if inputConsumed {
+                    outStatus.pointee = .noDataNow
+                    return nil
+                }
+                outStatus.pointee = .haveData
+                inputConsumed = true
+                return buffer
+            })
+
+            if error == nil && convertedBuffer.frameLength > 0 {
+                try? file.write(from: convertedBuffer)
             }
         }
+
+        engine.prepare()
+        try engine.start()
+
+        self.audioEngine = engine
+        self.audioFile = file
+        self.recordingURL = url
+        self.startTime = Date()
     }
 
     func stop() -> Recording? {
-        levelTimer?.invalidate()
-        levelTimer = nil
-        audioLevel = 0.0
-        let duration = recorder?.currentTime ?? 0
-        recorder?.stop()
-        recorder = nil
+        guard let engine = audioEngine, engine.isRunning else { return nil }
+
+        let duration = startTime.map { Date().timeIntervalSince($0) } ?? 0
+        engine.inputNode.removeTap(onBus: 0)
+        try? engine.inputNode.setVoiceProcessingEnabled(false)
+        engine.stop()
+
+        self.audioEngine = nil
+        self.audioFile = nil
+        self.audioLevel = 0.0
+
         guard let recordingURL else { return nil }
         return Recording(url: recordingURL, duration: duration)
     }
