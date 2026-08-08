@@ -105,7 +105,7 @@ Open Settings via the Menu Bar icon, `Command+,`, or by opening `SwiftVoice.app`
 - **General**: Interface Language picker, interactive Push-to-Talk hotkey recorder, Floating Dictation Overlay toggle, Launch-at-Login toggle, and active microphone selector.
 - **Dictionary**: Custom domain terminology, alias replacements, and **Import/Export** buttons (JSON & CSV).
 - **Recognition**: In-app Whisper model selector & downloader, paths to `whisper-cli` executable and model file, language selection, and privacy information.
-- **About**: Version information (`v1.0.0`), license details, and project repository links.
+- **About**: Version information (`v1.1.0`), license details, and project repository links.
 
 The dictionary file is stored at:
 ```text

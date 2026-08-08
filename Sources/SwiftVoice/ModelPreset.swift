@@ -119,7 +119,15 @@ final class ModelDownloader: NSObject, ObservableObject, URLSessionDownloadDeleg
         isDownloading = false
         progress = 0.0
         statusText = ""
-        completionHandler?(nil)
+        finish(with: nil)
+    }
+
+    private func finish(with url: URL?) {
+        let completion = completionHandler
+        completionHandler = nil
+        downloadTask = nil
+        targetURL = nil
+        completion?(url)
     }
 
     // MARK: - URLSessionDownloadDelegate
@@ -132,7 +140,7 @@ final class ModelDownloader: NSObject, ObservableObject, URLSessionDownloadDeleg
         guard let targetURL = self.targetURL else {
             Task { @MainActor in
                 self.isDownloading = false
-                self.completionHandler?(nil)
+                self.finish(with: nil)
             }
             return
         }
@@ -149,14 +157,14 @@ final class ModelDownloader: NSObject, ObservableObject, URLSessionDownloadDeleg
                 self.isDownloading = false
                 self.progress = 1.0
                 self.statusText = "100%"
-                self.completionHandler?(targetURL)
+                self.finish(with: targetURL)
             }
         } catch {
             let errMessage = error.localizedDescription
             Task { @MainActor in
                 self.isDownloading = false
                 self.errorMessage = errMessage
-                self.completionHandler?(nil)
+                self.finish(with: nil)
             }
         }
     }
@@ -193,7 +201,7 @@ final class ModelDownloader: NSObject, ObservableObject, URLSessionDownloadDeleg
                     self.errorMessage = error.localizedDescription
                 }
                 self.isDownloading = false
-                self.completionHandler?(nil)
+                self.finish(with: nil)
             }
         }
     }

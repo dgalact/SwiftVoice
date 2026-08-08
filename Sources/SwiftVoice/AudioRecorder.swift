@@ -76,11 +76,10 @@ final class AudioRecorder: ObservableObject {
         guard isRecording, let engine = audioEngine, engine.isRunning else { return nil }
 
         isRecording = false
-        writeQueue.sync {}
-
         let duration = startTime.map { Date().timeIntervalSince($0) } ?? 0
 
         engine.inputNode.removeTap(onBus: 0)
+        writeQueue.sync {}
         try? engine.inputNode.setVoiceProcessingEnabled(false)
         engine.stop()
 
