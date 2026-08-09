@@ -1,37 +1,20 @@
-name: macOS CI
+name: Publish macOS release
 
 on:
   push:
-    branches: [main]
-    paths:
-      - ".github/workflows/**"
-      - ".gitmodules"
-      - "Package.swift"
-      - "Resources/**"
-      - "Sources/**"
-      - "scripts/**"
-      - "vendor/whisper.cpp"
-  pull_request:
-    paths:
-      - ".github/workflows/**"
-      - ".gitmodules"
-      - "Package.swift"
-      - "Resources/**"
-      - "Sources/**"
-      - "scripts/**"
-      - "vendor/whisper.cpp"
-  workflow_dispatch:
+    tags:
+      - "v*"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: macos-ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: macos-release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
-  build:
-    name: Build and verify Apple Silicon release
+  release:
+    name: Build and publish Apple Silicon release
     runs-on: macos-15
     timeout-minutes: 30
 
@@ -40,11 +23,24 @@ jobs:
         shell: zsh {0}
 
     steps:
-      - name: Check out SwiftVoice and pinned whisper.cpp
+      - name: Check out tagged source and pinned whisper.cpp
         uses: actions/checkout@v4
         with:
           submodules: recursive
           fetch-depth: 1
+
+      - name: Verify tag matches application version
+        id: version
+        run: |
+          version=$(plutil -extract CFBundleShortVersionString raw Resources/Info.plist)
+          expected_tag="v${version}"
+
+          if [[ "$GITHUB_REF_NAME" != "$expected_tag" ]]; then
+            echo "Tag $GITHUB_REF_NAME does not match application version $version (expected $expected_tag)." >&2
+            exit 1
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Show toolchain
         run: |
@@ -64,7 +60,7 @@ jobs:
         run: |
           app="dist/SwiftVoice.app"
           cli="$app/Contents/MacOS/whisper-cli"
-          version=$(plutil -extract CFBundleShortVersionString raw "$app/Contents/Info.plist")
+          version="${{ steps.version.outputs.version }}"
           archive="release/SwiftVoice-${version}-macOS-arm64.zip"
 
           test "$(lipo -archs "$app/Contents/MacOS/SwiftVoice")" = "arm64"
@@ -83,4 +79,14 @@ jobs:
             shasum -a 256 -c "$(basename "$archive").sha256"
           )
 
-          echo "Verified SwiftVoice $version on $(uname -m)"
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "release/SwiftVoice-${VERSION}-macOS-arm64.zip" \
+            "release/SwiftVoice-${VERSION}-macOS-arm64.zip.sha256" \
+            --verify-tag \
+            --title "SwiftVoice ${VERSION}" \
+            --generate-notes

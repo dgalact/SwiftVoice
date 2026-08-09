@@ -109,6 +109,8 @@ open "/Applications/SwiftVoice.app"
 ```
 Creates and verifies an arm64 ZIP plus SHA-256 checksum under `release/`.
 
+Published releases are built automatically on GitHub's Apple Silicon macOS 15 runner. Update `CFBundleShortVersionString` in `Resources/Info.plist`, commit and push the change, then push the matching tag (for example, `v1.4.0`). GitHub verifies that the tag and application version match, creates the ZIP and checksum, and publishes the GitHub Release.
+
 ### Bootstrap `whisper.cpp`
 ```bash
 ./scripts/bootstrap-whisper.sh
