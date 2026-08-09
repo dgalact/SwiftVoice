@@ -8,9 +8,7 @@
 
 ---
 
-```text
-Hold Hotkey (e.g. Right ⌥ or ⌘B) → Floating Live Waveform HUD → Release → whisper.cpp → Text injected
-```
+> **How it works:** Hold Hotkey (e.g. Right ⌥ or ⌘B) → Floating Live Waveform HUD → Release → `whisper.cpp` → Text injected
 
 Audio recording and speech recognition take place entirely on your Mac. SwiftVoice uses no external network APIs, stores no dictation history, and does not listen to your microphone in the background.
 
