@@ -269,6 +269,11 @@ final class LocalizationManager: ObservableObject, @unchecked Sendable {
             "ru": "Движок",
             "uk": "Двигун"
         ],
+        "engine_bundled": [
+            "en": "Bundled with SwiftVoice",
+            "ru": "Встроен в SwiftVoice",
+            "uk": "Вбудовано у SwiftVoice"
+        ],
         "sec_model": [
             "en": "Model",
             "ru": "Модель",
@@ -323,11 +328,6 @@ final class LocalizationManager: ObservableObject, @unchecked Sendable {
             "en": "Not selected",
             "ru": "Не выбрано",
             "uk": "Не обрано"
-        ],
-        "dlg_choose_whisper": [
-            "en": "Select whisper-cli executable",
-            "ru": "Выбери исполняемый файл whisper-cli",
-            "uk": "Обери виконуваний файл whisper-cli"
         ],
         "dlg_choose_model": [
             "en": "Select Whisper model file",
@@ -452,11 +452,6 @@ final class LocalizationManager: ObservableObject, @unchecked Sendable {
             "en": "Settings…",
             "ru": "Настройки…",
             "uk": "Налаштування…"
-        ],
-        "menu_select_whisper": [
-            "en": "Select whisper-cli…",
-            "ru": "Выбрать whisper-cli…",
-            "uk": "Обрати whisper-cli…"
         ],
         "menu_select_model": [
             "en": "Select model…",

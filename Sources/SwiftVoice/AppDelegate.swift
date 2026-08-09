@@ -332,18 +332,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         try FileManager.default.copyItem(at: sourceURL, to: destination)
     }
 
-    @objc private func selectWhisperExecutable() {
-        let loc = LocalizationManager.shared
-        let panel = NSOpenPanel()
-        panel.title = loc.string("dlg_choose_whisper")
-        panel.canChooseDirectories = false
-        panel.allowsMultipleSelection = false
-        if panel.runModal() == .OK, let url = panel.url {
-            UserDefaults.standard.set(url.path, forKey: Settings.whisperExecutableKey)
-            refreshConfigurationStatus()
-        }
-    }
-
     @objc private func selectModel() {
         let loc = LocalizationManager.shared
         let panel = NSOpenPanel()

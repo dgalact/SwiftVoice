@@ -274,18 +274,16 @@ private struct DictionarySettingsView: View {
 private struct RecognitionSettingsView: View {
     @ObservedObject private var loc = LocalizationManager.shared
     @ObservedObject private var downloader = ModelDownloader.shared
-    @AppStorage(Settings.whisperExecutableKey) private var executablePath = ""
     @AppStorage(Settings.modelPathKey) private var modelPath = ""
     @State private var selectedPreset: ModelPreset = .largeV3Turbo
 
     var body: some View {
         Form {
             Section(loc.string("sec_engine")) {
-                pathRow(
-                    title: "whisper-cli",
-                    path: executablePath,
-                    action: { chooseFile(title: loc.string("dlg_choose_whisper"), binding: $executablePath) }
-                )
+                LabeledContent("whisper.cpp") {
+                    Text("v1.9.2 · \(loc.string("engine_bundled"))")
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Section(loc.string("sec_model")) {
@@ -295,7 +293,7 @@ private struct RecognitionSettingsView: View {
                     }
                 }
                 .onChange(of: selectedPreset) { _, newPreset in
-                    if newPreset != .custom, let expectedURL = newPreset.expectedURL, newPreset.exists {
+                    if newPreset != .custom, let expectedURL = newPreset.expectedURL {
                         modelPath = expectedURL.path
                     }
                 }
@@ -380,6 +378,9 @@ private struct RecognitionSettingsView: View {
         .formStyle(.grouped)
         .onAppear {
             selectedPreset = ModelPreset.detectPreset(forPath: modelPath)
+            if selectedPreset != .custom, let expectedURL = selectedPreset.expectedURL {
+                modelPath = expectedURL.path
+            }
         }
     }
 
@@ -407,18 +408,13 @@ private struct RecognitionSettingsView: View {
 
         let currentPath = binding.wrappedValue
         let defaultFolder = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent("SwiftVoice/vendor/whisper.cpp", isDirectory: true)
+            .appendingPathComponent("Library/Application Support/SwiftVoice/models", isDirectory: true)
         if !currentPath.isEmpty {
             let url = URL(fileURLWithPath: currentPath)
             if FileManager.default.fileExists(atPath: url.path) {
                 panel.directoryURL = url.deletingLastPathComponent()
             } else {
-                let migratedURL = URL(fileURLWithPath: currentPath.replacingOccurrences(of: "/Jarvis/", with: "/SwiftVoice/"))
-                if FileManager.default.fileExists(atPath: migratedURL.path) {
-                    panel.directoryURL = migratedURL.deletingLastPathComponent()
-                } else {
-                    panel.directoryURL = defaultFolder
-                }
+                panel.directoryURL = defaultFolder
             }
         } else {
             panel.directoryURL = defaultFolder

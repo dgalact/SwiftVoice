@@ -43,20 +43,7 @@ enum ModelPreset: String, CaseIterable, Identifiable, Codable, Sendable {
     var expectedURL: URL? {
         guard !fileName.isEmpty else { return nil }
         let home = FileManager.default.homeDirectoryForCurrentUser
-        let vendorModels = home.appendingPathComponent("SwiftVoice/vendor/whisper.cpp/models/\(fileName)")
-        if FileManager.default.fileExists(atPath: vendorModels.path) {
-            return vendorModels
-        }
-        let appSupportModels = home.appendingPathComponent("Library/Application Support/SwiftVoice/models/\(fileName)")
-        if FileManager.default.fileExists(atPath: appSupportModels.path) {
-            return appSupportModels
-        }
-        // Preferred destination for new downloads
-        let vendorDir = home.appendingPathComponent("SwiftVoice/vendor/whisper.cpp/models")
-        if FileManager.default.fileExists(atPath: vendorDir.path) {
-            return vendorModels
-        }
-        return appSupportModels
+        return home.appendingPathComponent("Library/Application Support/SwiftVoice/models/\(fileName)")
     }
 
     var exists: Bool {

@@ -1,65 +1,21 @@
 import Foundation
 
 enum Settings {
-    static let whisperExecutableKey = "whisperExecutablePath"
     static let modelPathKey = "whisperModelPath"
 }
 
 struct WhisperTranscriber {
-    private func resolvePath(forKey key: String) -> String? {
-        // 1. Check current domain
-        if var path = UserDefaults.standard.string(forKey: key), !path.isEmpty {
-            if !FileManager.default.fileExists(atPath: path) && path.contains("/Jarvis/") {
-                let migratedPath = path.replacingOccurrences(of: "/Jarvis/", with: "/SwiftVoice/")
-                if FileManager.default.fileExists(atPath: migratedPath) {
-                    path = migratedPath
-                    UserDefaults.standard.set(migratedPath, forKey: key)
-                }
-            }
-            if FileManager.default.fileExists(atPath: path) {
-                return path
-            }
-        }
-
-        // 2. Check legacy bundle domains (local.dgalact.swiftvoice, local.dgalact.jarvis)
-        let legacyDomains = ["local.dgalact.swiftvoice", "local.dgalact.jarvis"]
-        for domain in legacyDomains {
-            if let oldDict = UserDefaults.standard.persistentDomain(forName: domain),
-               let oldPath = oldDict[key] as? String, !oldPath.isEmpty {
-                var path = oldPath
-                if !FileManager.default.fileExists(atPath: path) && path.contains("/Jarvis/") {
-                    path = path.replacingOccurrences(of: "/Jarvis/", with: "/SwiftVoice/")
-                }
-                if FileManager.default.fileExists(atPath: path) {
-                    UserDefaults.standard.set(path, forKey: key)
-                    return path
-                }
-            }
-        }
-
-        // 3. Auto-discover default local build paths under ~/SwiftVoice/vendor/whisper.cpp
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
-        let defaultPath: String
-        if key == Settings.whisperExecutableKey {
-            defaultPath = "\(home)/SwiftVoice/vendor/whisper.cpp/build/bin/whisper-cli"
-        } else {
-            defaultPath = "\(home)/SwiftVoice/vendor/whisper.cpp/models/ggml-large-v3-turbo.bin"
-        }
-
-        if FileManager.default.fileExists(atPath: defaultPath) {
-            UserDefaults.standard.set(defaultPath, forKey: key)
-            return defaultPath
-        }
-
-        return nil
-    }
-
     private var executablePath: String? {
-        resolvePath(forKey: Settings.whisperExecutableKey)
+        let url = Bundle.main.bundleURL
+            .appendingPathComponent("Contents/MacOS/whisper-cli")
+        return FileManager.default.isExecutableFile(atPath: url.path) ? url.path : nil
     }
 
     private var modelPath: String? {
-        resolvePath(forKey: Settings.modelPathKey)
+        guard let path = UserDefaults.standard.string(forKey: Settings.modelPathKey),
+              !path.isEmpty,
+              FileManager.default.fileExists(atPath: path) else { return nil }
+        return path
     }
 
     var isConfigured: Bool {

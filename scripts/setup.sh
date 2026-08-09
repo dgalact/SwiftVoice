@@ -2,8 +2,6 @@
 set -euo pipefail
 
 project_dir=${0:A:h:h}
-whisper_dir="$project_dir/vendor/whisper.cpp"
-whisper_cli="$whisper_dir/build/bin/whisper-cli"
 
 for command_name in git cmake swift; do
   if ! command -v "$command_name" >/dev/null 2>&1; then
@@ -16,8 +14,6 @@ done
 "$project_dir/scripts/bootstrap-whisper.sh"
 "$project_dir/scripts/build-app.sh"
 "$project_dir/scripts/install-app.sh"
-
-defaults write org.swiftvoice.mac whisperExecutablePath "$whisper_cli"
 
 echo
 echo "SwiftVoice successfully installed: /Applications/SwiftVoice.app"
