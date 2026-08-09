@@ -1,6 +1,7 @@
 .DS_Store
 .build/
 dist/
+release/
 vendor/whisper.cpp/build/
 *.xcuserstate
 *.o

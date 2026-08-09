@@ -52,7 +52,16 @@ Audio recording and speech recognition take place entirely on your Mac. SwiftVoi
 
 ---
 
-## 🚀 Quick Start (Automated Setup)
+## 🚀 Install the Ready-to-Run App
+
+1. Download `SwiftVoice-1.3.0-macOS-arm64.zip` from [GitHub Releases](https://github.com/dgalact/SwiftVoice/releases/latest).
+2. Extract the archive and move `SwiftVoice.app` to `/Applications`.
+3. On first launch, Control-click the app and choose **Open**. The current release is ad-hoc signed and is not notarized with an Apple Developer ID.
+4. Grant Microphone and Accessibility permissions, then download a Whisper model in **Settings → Recognition**.
+
+The ready-to-run app supports Apple Silicon Macs and does not require Xcode, CMake, Git, or the source checkout.
+
+## 🧑‍💻 Build from Source
 
 1. Clone the repository:
    ```bash
@@ -78,7 +87,7 @@ Audio recording and speech recognition take place entirely on your Mac. SwiftVoi
 
 ---
 
-## 🛠️ Build & Installation Scripts
+## 🛠️ Development Scripts
 
 ### Build Application
 ```bash
@@ -91,6 +100,12 @@ open "dist/SwiftVoice.app"
 ./scripts/install-app.sh
 open "/Applications/SwiftVoice.app"
 ```
+
+### Package a Release
+```bash
+./scripts/package-release.sh
+```
+Creates and verifies an arm64 ZIP plus SHA-256 checksum under `release/`.
 
 ### Bootstrap `whisper.cpp`
 ```bash

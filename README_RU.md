@@ -52,7 +52,16 @@
 
 ---
 
-## 🚀 Быстрый запуск (Автоматическая установка)
+## 🚀 Установка готового приложения
+
+1. Скачайте `SwiftVoice-1.3.0-macOS-arm64.zip` из [GitHub Releases](https://github.com/dgalact/SwiftVoice/releases/latest).
+2. Распакуйте архив и переместите `SwiftVoice.app` в `/Applications`.
+3. При первом запуске нажмите по приложению с Control и выберите **Открыть**. Текущий релиз подписан ad-hoc и не нотаризован сертификатом Apple Developer ID.
+4. Предоставьте доступ к микрофону и Accessibility, затем скачайте модель Whisper в **Настройки → Распознавание**.
+
+Готовое приложение поддерживает Mac с Apple Silicon и не требует Xcode, CMake, Git или исходников.
+
+## 🧑‍💻 Сборка из исходников
 
 1. Клонируйте репозиторий:
    ```bash
@@ -78,7 +87,7 @@
 
 ---
 
-## 🛠️ Скрипты сборки и установки
+## 🛠️ Скрипты для разработки
 
 ### Сборка приложения
 ```bash
@@ -91,6 +100,12 @@ open "dist/SwiftVoice.app"
 ./scripts/install-app.sh
 open "/Applications/SwiftVoice.app"
 ```
+
+### Подготовка релиза
+```bash
+./scripts/package-release.sh
+```
+Создаёт и проверяет arm64 ZIP и контрольную сумму SHA-256 в каталоге `release/`.
 
 ### Подготовка `whisper.cpp`
 ```bash
