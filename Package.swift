@@ -14,6 +14,7 @@ let package = Package(
             path: "Sources/SwiftVoice",
             linkerSettings: [
                 .linkedFramework("AppKit"),
+                .linkedFramework("AudioToolbox"),
                 .linkedFramework("AVFoundation"),
                 .linkedFramework("ApplicationServices"),
                 .linkedFramework("CoreAudio"),

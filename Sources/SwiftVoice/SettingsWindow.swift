@@ -49,6 +49,8 @@ private struct SettingsView: View {
                 .tabItem { Label(loc.string("tab_dictionary"), systemImage: "book") }
             RecognitionSettingsView()
                 .tabItem { Label(loc.string("tab_recognition"), systemImage: "waveform") }
+            FileTranscriptionView()
+                .tabItem { Label(loc.string("tab_transcription"), systemImage: "doc.text.magnifyingglass") }
             AboutSettingsView()
                 .tabItem { Label(loc.string("tab_about"), systemImage: "info.circle") }
         }

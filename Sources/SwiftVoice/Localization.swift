@@ -88,6 +88,11 @@ final class LocalizationManager: ObservableObject, @unchecked Sendable {
             "ru": "Распознавание",
             "uk": "Розпізнавання"
         ],
+        "tab_transcription": [
+            "en": "Transcription",
+            "ru": "Расшифровка",
+            "uk": "Транскрипція"
+        ],
         "tab_about": [
             "en": "About",
             "ru": "О программе",
@@ -328,6 +333,78 @@ final class LocalizationManager: ObservableObject, @unchecked Sendable {
             "en": "Select Whisper model file",
             "ru": "Выбери модель Whisper",
             "uk": "Обери модель Whisper"
+        ],
+
+        // File Transcription Tab
+        "file_description": [
+            "en": "Transcribe an audio file locally with the selected Whisper model. The personal dictation dictionary is not applied.",
+            "ru": "Расшифровка аудиофайла выполняется локально выбранной моделью Whisper. Личный словарь диктовки не применяется.",
+            "uk": "Транскрипція аудіофайлу виконується локально вибраною моделлю Whisper. Особистий словник диктування не застосовується."
+        ],
+        "file_drop_prompt": [
+            "en": "Choose or drop an audio file here",
+            "ru": "Выбери или перетащи сюда аудиофайл",
+            "uk": "Обери або перетягни сюди аудіофайл"
+        ],
+        "file_choose": [
+            "en": "Choose File…",
+            "ru": "Выбрать файл…",
+            "uk": "Обрати файл…"
+        ],
+        "file_choose_title": [
+            "en": "Choose Audio File",
+            "ru": "Выбери аудиофайл",
+            "uk": "Обери аудіофайл"
+        ],
+        "file_transcribe": [
+            "en": "Transcribe",
+            "ru": "Расшифровать",
+            "uk": "Транскрибувати"
+        ],
+        "file_copy": [
+            "en": "Copy",
+            "ru": "Скопировать",
+            "uk": "Скопіювати"
+        ],
+        "file_save": [
+            "en": "Save TXT…",
+            "ru": "Сохранить TXT…",
+            "uk": "Зберегти TXT…"
+        ],
+        "file_clear": [
+            "en": "Clear",
+            "ru": "Очистить",
+            "uk": "Очистити"
+        ],
+        "file_save_title": [
+            "en": "Save Transcription",
+            "ru": "Сохранить расшифровку",
+            "uk": "Зберегти транскрипцію"
+        ],
+        "file_status_preparing": [
+            "en": "Preparing audio…",
+            "ru": "Подготавливаю аудио…",
+            "uk": "Готую аудіо…"
+        ],
+        "file_status_transcribing": [
+            "en": "Transcribing audio…",
+            "ru": "Распознаю аудио…",
+            "uk": "Розпізнаю аудіо…"
+        ],
+        "file_status_ready": [
+            "en": "Transcription ready",
+            "ru": "Расшифровка готова",
+            "uk": "Транскрипція готова"
+        ],
+        "err_file_unsupported": [
+            "en": "Unsupported audio format. Choose WAV, M4A, MP3, or AAC.",
+            "ru": "Формат аудио не поддерживается. Выбери WAV, M4A, MP3 или AAC.",
+            "uk": "Формат аудіо не підтримується. Обери WAV, M4A, MP3 або AAC."
+        ],
+        "err_file_conversion": [
+            "en": "Could not prepare the audio file for Whisper.",
+            "ru": "Не удалось подготовить аудиофайл для Whisper.",
+            "uk": "Не вдалося підготувати аудіофайл для Whisper."
         ],
 
         // Menu items

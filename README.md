@@ -29,6 +29,7 @@ Audio recording and speech recognition take place entirely on your Mac. SwiftVoi
 ## ✨ Features
 
 - **Push-to-Talk Dictation**: Hold your hotkey to record audio, release to transcribe and automatically type text into whichever application is currently focused.
+- **Audio File Transcription**: Choose or drop a WAV, M4A, MP3, or AAC file, transcribe it locally without the personal dictation dictionary, then edit, copy, or save the result as UTF-8 text.
 - **Floating Dictation HUD Overlay**: Glassmorphic pill window near the top of the display with real-time audio level waveform animations during dictation (can be toggled in Settings).
 - **In-App Whisper Model Selector & Downloader**: Easily switch between 6 official Whisper models (`Tiny`, `Base`, `Small`, `Medium`, `Large v3`, `Large v3 Turbo`) or custom files. Download missing models directly inside Settings with progress tracking.
 - **Custom Hotkey Recorder**: Bind any single modifier (`Right ⌥`, `Left ⌃`, `Fn`) or key combination (`⌘B`, `⌥Space`, `⌃Shift+V`) with real-time macOS system conflict detection.
@@ -105,7 +106,8 @@ Open Settings via the Menu Bar icon, `Command+,`, or by opening `SwiftVoice.app`
 - **General**: Interface Language picker, interactive Push-to-Talk hotkey recorder, Floating Dictation Overlay toggle, Launch-at-Login toggle, and active microphone selector.
 - **Dictionary**: Custom domain terminology, alias replacements, and **Import/Export** buttons (JSON & CSV).
 - **Recognition**: In-app Whisper model selector & downloader, paths to `whisper-cli` executable and model file, language selection, and privacy information.
-- **About**: Version information (`v1.1.0`), license details, and project repository links.
+- **Transcription**: Local WAV/M4A/MP3/AAC file transcription with an editable result, Copy, and Save TXT actions. The personal dictation dictionary is intentionally not applied.
+- **About**: Version information (`v1.2.0`), license details, and project repository links.
 
 The dictionary file is stored at:
 ```text
