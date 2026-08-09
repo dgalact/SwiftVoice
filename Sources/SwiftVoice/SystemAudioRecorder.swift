@@ -1,7 +1,7 @@
 import AVFoundation
 import CoreMedia
 import Foundation
-import ScreenCaptureKit
+@preconcurrency import ScreenCaptureKit
 
 @MainActor
 final class SystemAudioRecorder {
