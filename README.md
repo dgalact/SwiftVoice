@@ -143,4 +143,4 @@ Downloaded model files are stored independently from the source checkout at:
 
 ## 📄 License
 
-Distributed under the [MIT License](LICENSE).
+Distributed under the [MIT License](LICENSE). The ready-to-run application bundle includes the SwiftVoice and bundled `whisper.cpp` MIT license notices under `Contents/Resources/Licenses/`.

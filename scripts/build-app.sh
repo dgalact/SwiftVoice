@@ -4,6 +4,7 @@ set -euo pipefail
 project_dir=${0:A:h:h}
 build_dir="$project_dir/.build/release"
 app_dir="$project_dir/dist/SwiftVoice.app"
+licenses_dir="$app_dir/Contents/Resources/Licenses"
 whisper_bin_dir="$project_dir/vendor/whisper.cpp/build/bin"
 whisper_cli="$whisper_bin_dir/whisper-cli"
 whisper_libraries=(
@@ -31,7 +32,7 @@ cd "$project_dir"
 swift build -c release
 
 rm -rf "$app_dir"
-mkdir -p "$app_dir/Contents/MacOS" "$app_dir/Contents/Frameworks" "$app_dir/Contents/Resources"
+mkdir -p "$app_dir/Contents/MacOS" "$app_dir/Contents/Frameworks" "$licenses_dir"
 cp "$build_dir/SwiftVoice" "$app_dir/Contents/MacOS/SwiftVoice"
 cp "$whisper_cli" "$app_dir/Contents/MacOS/whisper-cli"
 for library in "${whisper_libraries[@]}"; do
@@ -39,6 +40,8 @@ for library in "${whisper_libraries[@]}"; do
 done
 cp "$project_dir/Resources/Info.plist" "$app_dir/Contents/Info.plist"
 cp "$project_dir/Resources/SwiftVoiceIcon.icns" "$app_dir/Contents/Resources/SwiftVoiceIcon.icns"
+cp "$project_dir/LICENSE" "$licenses_dir/SwiftVoice-LICENSE.txt"
+cp "$project_dir/vendor/whisper.cpp/LICENSE" "$licenses_dir/whisper.cpp-LICENSE.txt"
 
 install_name_tool \
   -rpath "$whisper_bin_dir" "@executable_path/../Frameworks" \

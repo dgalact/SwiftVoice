@@ -139,4 +139,4 @@ open "/Applications/SwiftVoice.app"
 
 ## 📄 Лицензия
 
-Распространяется по лицензии [MIT License](LICENSE).
+Распространяется по лицензии [MIT License](LICENSE). Готовое приложение содержит тексты MIT-лицензий SwiftVoice и встроенного `whisper.cpp` в каталоге `Contents/Resources/Licenses/`.

@@ -35,6 +35,8 @@ ditto -x -k "$archive_path" "$verification_dir"
 verified_app="$verification_dir/SwiftVoice.app"
 codesign --verify --deep --strict "$verified_app"
 "$verified_app/Contents/MacOS/whisper-cli" --help >/dev/null 2>&1
+cmp "$project_dir/LICENSE" "$verified_app/Contents/Resources/Licenses/SwiftVoice-LICENSE.txt"
+cmp "$project_dir/vendor/whisper.cpp/LICENSE" "$verified_app/Contents/Resources/Licenses/whisper.cpp-LICENSE.txt"
 verified_version=$(plutil -extract CFBundleShortVersionString raw "$verified_app/Contents/Info.plist")
 if [[ "$verified_version" != "$version" ]]; then
   echo "Release version mismatch: expected $version, got $verified_version" >&2
