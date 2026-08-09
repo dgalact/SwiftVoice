@@ -82,7 +82,10 @@ private struct GeneralSettingsView: View {
                 }
 
                 LabeledContent(loc.string("lbl_push_to_talk")) {
-                    HotkeyRecorderView()
+                    HotkeyRecorderView(kind: .pushToTalk)
+                }
+                LabeledContent(loc.string("lbl_continuous_recording")) {
+                    HotkeyRecorderView(kind: .continuous)
                 }
                 Toggle(loc.string("lbl_show_overlay"), isOn: $showDictationOverlay)
                 LabeledContent(loc.string("lbl_processing")) {

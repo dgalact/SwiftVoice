@@ -135,6 +135,11 @@ final class LocalizationManager: ObservableObject, @unchecked Sendable {
             "ru": "Push-to-talk",
             "uk": "Push-to-talk"
         ],
+        "lbl_continuous_recording": [
+            "en": "Continuous recording",
+            "ru": "Длительная запись",
+            "uk": "Тривалий запис"
+        ],
         "lbl_recording_hotkey": [
             "en": "Press key combination…",
             "ru": "Нажми сочетание клавиш…",
@@ -149,6 +154,11 @@ final class LocalizationManager: ObservableObject, @unchecked Sendable {
             "en": "⚠️ This shortcut may conflict with a macOS system hotkey (e.g. Spotlight or Copy).",
             "ru": "⚠️ Этот хоткей может конфликтовать с системным сокращением macOS (например, Spotlight или Копировать).",
             "uk": "⚠️ Ця комбінація може конфліктувати із системним скороченням macOS (наприклад, Spotlight або Копіювати)."
+        ],
+        "warn_hotkeys_same": [
+            "en": "Choose a different shortcut for each recording mode.",
+            "ru": "Выбери разные сочетания для двух режимов записи.",
+            "uk": "Обери різні комбінації для двох режимів запису."
         ],
         "val_push_to_talk": [
             "en": "Hold right ⌥",
@@ -447,6 +457,21 @@ final class LocalizationManager: ObservableObject, @unchecked Sendable {
             "en": "Push-to-talk",
             "ru": "Push-to-talk",
             "uk": "Push-to-talk"
+        ],
+        "menu_continuous_start": [
+            "en": "Start continuous recording",
+            "ru": "Начать длительную запись",
+            "uk": "Почати тривалий запис"
+        ],
+        "menu_continuous_stop": [
+            "en": "Stop and transcribe",
+            "ru": "Остановить и распознать",
+            "uk": "Зупинити й розпізнати"
+        ],
+        "menu_copy_last": [
+            "en": "Copy last text",
+            "ru": "Скопировать последний текст",
+            "uk": "Скопіювати останній текст"
         ],
         "menu_settings": [
             "en": "Settings…",

@@ -1,13 +1,27 @@
 import AppKit
 import SwiftUI
 
+enum HotkeyRecorderKind {
+    case pushToTalk
+    case continuous
+}
+
 struct HotkeyRecorderView: View {
+    let kind: HotkeyRecorderKind
     @ObservedObject private var hotkeyManager = HotkeyManager.shared
     @ObservedObject private var loc = LocalizationManager.shared
     @State private var isRecording = false
     @State private var previewText: String?
     @State private var pendingModifierHotkey: Hotkey?
     @State private var eventMonitor: Any?
+
+    private var selectedHotkey: Hotkey {
+        kind == .pushToTalk ? hotkeyManager.hotkey : hotkeyManager.continuousHotkey
+    }
+
+    private var defaultHotkey: Hotkey {
+        kind == .pushToTalk ? .defaultHotkey : .defaultContinuousHotkey
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -29,7 +43,7 @@ struct HotkeyRecorderView: View {
                         } else {
                             Image(systemName: "keyboard")
                                 .foregroundStyle(.secondary)
-                            Text(hotkeyManager.hotkey.displayString)
+                            Text(selectedHotkey.displayString)
                                 .fontWeight(.semibold)
                         }
                     }
@@ -46,9 +60,9 @@ struct HotkeyRecorderView: View {
                     .buttonStyle(.plain)
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                } else if hotkeyManager.hotkey != Hotkey.defaultHotkey {
+                } else if selectedHotkey != defaultHotkey {
                     Button(loc.string("btn_reset_default")) {
-                        hotkeyManager.resetToDefault()
+                        resetToDefault()
                     }
                     .buttonStyle(.plain)
                     .font(.caption)
@@ -56,11 +70,16 @@ struct HotkeyRecorderView: View {
                 }
             }
 
-            if hotkeyManager.hotkey.isSystemConflict {
+            if selectedHotkey.isSystemConflict {
                 Text(loc.string("warn_system_conflict"))
                     .font(.caption)
                     .foregroundStyle(.orange)
                     .padding(.top, 2)
+            }
+            if hotkeyManager.hotkey == hotkeyManager.continuousHotkey {
+                Text(loc.string("warn_hotkeys_same"))
+                    .font(.caption)
+                    .foregroundStyle(.red)
             }
         }
         .onDisappear {
@@ -83,7 +102,7 @@ struct HotkeyRecorderView: View {
 
             // Delete / Backspace resets to default
             if event.type == .keyDown && event.keyCode == 51 {
-                self.hotkeyManager.resetToDefault()
+                self.resetToDefault()
                 self.stopRecording()
                 return nil
             }
@@ -112,7 +131,7 @@ struct HotkeyRecorderView: View {
                         self.pendingModifierHotkey = candidate
                         self.previewText = candidate.displayString + "…"
                     } else if let candidate = self.pendingModifierHotkey {
-                        self.hotkeyManager.setHotkey(candidate)
+                        self.apply(candidate)
                         self.stopRecording()
                     }
                     return nil
@@ -125,7 +144,7 @@ struct HotkeyRecorderView: View {
                     modifierFlagsRaw: flags.rawValue,
                     isModifierOnly: false
                 )
-                self.hotkeyManager.setHotkey(recorded)
+                self.apply(recorded)
                 self.stopRecording()
                 return nil
             }
@@ -145,6 +164,23 @@ struct HotkeyRecorderView: View {
         if let eventMonitor {
             NSEvent.removeMonitor(eventMonitor)
             self.eventMonitor = nil
+        }
+    }
+
+
+    private func apply(_ hotkey: Hotkey) {
+        if kind == .pushToTalk {
+            hotkeyManager.setHotkey(hotkey)
+        } else {
+            hotkeyManager.setContinuousHotkey(hotkey)
+        }
+    }
+
+    private func resetToDefault() {
+        if kind == .pushToTalk {
+            hotkeyManager.resetToDefault()
+        } else {
+            hotkeyManager.resetContinuousToDefault()
         }
     }
 }

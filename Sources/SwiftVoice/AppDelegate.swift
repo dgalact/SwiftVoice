@@ -5,6 +5,11 @@ import Combine
 
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+    private enum RecordingMode {
+        case pushToTalk
+        case continuous
+    }
+
     private let recorder = AudioRecorder()
     private let transcriber = WhisperTranscriber()
     private let dictionaryStore = DictionaryStore()
@@ -13,10 +18,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var eventTapSource: CFRunLoopSource?
     private var permissionRetryTimer: Timer?
     private var isHotkeyKeyDown = false
+    private var recordingMode: RecordingMode?
+    private var lastTranscription: String?
     private var statusItem: NSStatusItem!
     private var statusMenuItem: NSMenuItem!
     private var microphoneMenuItem: NSMenuItem!
     private var toggleMenuItem: NSMenuItem!
+    private var copyLastTextMenuItem: NSMenuItem!
     private var settingsMenuItem: NSMenuItem!
     private var quitMenuItem: NSMenuItem!
     private var isBusy = false
@@ -41,6 +49,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             .store(in: &cancellables)
 
         HotkeyManager.shared.$hotkey
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.updateLocalizedMenuTitles()
+            }
+            .store(in: &cancellables)
+
+        HotkeyManager.shared.$continuousHotkey
             .receive(on: RunLoop.main)
             .sink { [weak self] _ in
                 self?.updateLocalizedMenuTitles()
@@ -84,12 +99,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(.separator())
 
         toggleMenuItem = NSMenuItem(
-            title: "\(loc.string("menu_ptt_hint")): \(HotkeyManager.shared.hotkey.displayString)",
+            title: "\(loc.string("menu_continuous_start")): \(HotkeyManager.shared.continuousHotkey.displayString)",
             action: #selector(toggleRecording),
             keyEquivalent: ""
         )
         toggleMenuItem.target = self
         menu.addItem(toggleMenuItem)
+
+        copyLastTextMenuItem = NSMenuItem(
+            title: loc.string("menu_copy_last"),
+            action: #selector(copyLastText),
+            keyEquivalent: ""
+        )
+        copyLastTextMenuItem.target = self
+        copyLastTextMenuItem.isEnabled = false
+        menu.addItem(copyLastTextMenuItem)
 
         menu.addItem(.separator())
         settingsMenuItem = NSMenuItem(
@@ -108,11 +132,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func updateLocalizedMenuTitles() {
         let loc = LocalizationManager.shared
-        let hotkey = HotkeyManager.shared.hotkey
         settingsMenuItem?.title = loc.string("menu_settings")
         quitMenuItem?.title = loc.string("menu_quit")
+        copyLastTextMenuItem?.title = loc.string("menu_copy_last")
         if !recorder.isRecording && !isBusy {
-            toggleMenuItem?.title = "\(loc.string("menu_ptt_hint")): \(hotkey.displayString)"
+            toggleMenuItem?.title = "\(loc.string("menu_continuous_start")): \(HotkeyManager.shared.continuousHotkey.displayString)"
         }
         refreshMicrophoneMenu()
         refreshConfigurationStatus()
@@ -163,8 +187,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 return Unmanaged.passUnretained(event)
             }
 
-            let hotkey = HotkeyManager.shared.hotkey
+            let hotkeyManager = HotkeyManager.shared
+            let hotkey = hotkeyManager.hotkey
+            let continuousHotkey = hotkeyManager.continuousHotkey
             let code = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
+
+            if type == .keyDown,
+               code == 53,
+               delegate.recordingMode == .continuous {
+                Task { @MainActor in delegate.stopContinuousRecording() }
+                return nil
+            }
+
+            if !continuousHotkey.isModifierOnly,
+               type == .keyDown,
+               code == continuousHotkey.keyCode,
+               delegate.modifiersMatch(event.flags, hotkey: continuousHotkey),
+               event.getIntegerValueField(.keyboardEventAutorepeat) == 0 {
+                Task { @MainActor in delegate.toggleContinuousRecording() }
+                return nil
+            }
+
+
+            if continuousHotkey.isModifierOnly,
+               type == .flagsChanged,
+               code == continuousHotkey.keyCode,
+               delegate.modifierIsPressed(code: code, flags: event.flags) {
+                Task { @MainActor in delegate.toggleContinuousRecording() }
+                return nil
+            }
 
             if hotkey.isModifierOnly {
                 if type == .flagsChanged, code == hotkey.keyCode {
@@ -185,15 +236,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 }
             } else {
                 if type == .keyDown, code == hotkey.keyCode {
-                    let flags = event.flags
-                    let reqFlags = NSEvent.ModifierFlags(rawValue: hotkey.modifierFlagsRaw)
-                    var matches = true
-                    if reqFlags.contains(.command) && !flags.contains(.maskCommand) { matches = false }
-                    if reqFlags.contains(.option) && !flags.contains(.maskAlternate) { matches = false }
-                    if reqFlags.contains(.control) && !flags.contains(.maskControl) { matches = false }
-                    if reqFlags.contains(.shift) && !flags.contains(.maskShift) { matches = false }
-
-                    if matches {
+                    if delegate.modifiersMatch(event.flags, hotkey: hotkey) {
                         Task { @MainActor in
                             delegate.handlePushToTalk(isPressed: true)
                         }
@@ -241,23 +284,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         if isPressed {
             guard !recorder.isRecording, !isBusy else { return }
-            startRecording()
-        } else if recorder.isRecording {
+            startRecording(mode: .pushToTalk)
+        } else if recorder.isRecording, recordingMode == .pushToTalk {
             stopAndTranscribe()
         }
     }
 
     @objc private func toggleRecording() {
+        toggleContinuousRecording()
+    }
+
+    private func toggleContinuousRecording() {
         guard !isBusy else { return }
 
-        if recorder.isRecording {
+        if recorder.isRecording, recordingMode == .continuous {
             stopAndTranscribe()
-        } else {
-            startRecording()
+        } else if !recorder.isRecording {
+            startRecording(mode: .continuous)
         }
     }
 
-    private func startRecording() {
+    private func stopContinuousRecording() {
+        guard recorder.isRecording, recordingMode == .continuous else { return }
+        stopAndTranscribe()
+    }
+
+    private func startRecording(mode: RecordingMode) {
         guard transcriber.isConfigured else {
             presentConfigurationError()
             return
@@ -265,8 +317,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         do {
             try recorder.start()
+            recordingMode = mode
             DictationOverlayManager.shared.showRecording(recorder: recorder)
             let loc = LocalizationManager.shared
+            if mode == .continuous {
+                toggleMenuItem.title = loc.string("menu_continuous_stop")
+            }
             setState(title: loc.string("menu_recording"), symbol: "waveform.circle.fill")
         } catch {
             showError(LocalizationManager.shared.string("err_rec_failed"), details: error.localizedDescription)
@@ -278,6 +334,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             DictationOverlayManager.shared.hide()
             return
         }
+        recordingMode = nil
         isBusy = true
         toggleMenuItem.isEnabled = false
         DictationOverlayManager.shared.showTranscribing(recorder: recorder)
@@ -300,6 +357,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                     recording.url,
                     dictionary: dictionaryStore.entries
                 )
+                lastTranscription = text
+                copyLastTextMenuItem.isEnabled = true
                 try TextInjector.type(text)
                 setState(title: loc.string("menu_ready"), symbol: "checkmark.circle")
             } catch {
@@ -309,8 +368,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             try? FileManager.default.removeItem(at: recording.url)
             isBusy = false
             toggleMenuItem.isEnabled = true
-            toggleMenuItem.title = "\(loc.string("menu_ptt_hint")): \(HotkeyManager.shared.hotkey.displayString)"
+            toggleMenuItem.title = "\(loc.string("menu_continuous_start")): \(HotkeyManager.shared.continuousHotkey.displayString)"
             refreshConfigurationStatus()
+        }
+    }
+
+    @objc private func copyLastText() {
+        guard let lastTranscription else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(lastTranscription, forType: .string)
+    }
+
+    private func modifiersMatch(_ flags: CGEventFlags, hotkey: Hotkey) -> Bool {
+        let required = hotkey.modifierFlags
+        return (!required.contains(.command) || flags.contains(.maskCommand))
+            && (!required.contains(.option) || flags.contains(.maskAlternate))
+            && (!required.contains(.control) || flags.contains(.maskControl))
+            && (!required.contains(.shift) || flags.contains(.maskShift))
+    }
+
+    private func modifierIsPressed(code: UInt16, flags: CGEventFlags) -> Bool {
+        switch code {
+        case 61, 58: return flags.contains(.maskAlternate)
+        case 62, 59: return flags.contains(.maskControl)
+        case 54, 55: return flags.contains(.maskCommand)
+        case 60, 56: return flags.contains(.maskShift)
+        case 63: return flags.contains(.maskSecondaryFn)
+        default: return false
         }
     }
 

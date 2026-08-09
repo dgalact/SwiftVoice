@@ -12,6 +12,12 @@ struct Hotkey: Codable, Equatable, Sendable {
         isModifierOnly: true
     )
 
+    static let defaultContinuousHotkey = Hotkey(
+        keyCode: 11,
+        modifierFlagsRaw: NSEvent.ModifierFlags.command.rawValue,
+        isModifierOnly: false
+    )
+
     var modifierFlags: NSEvent.ModifierFlags {
         NSEvent.ModifierFlags(rawValue: modifierFlagsRaw)
     }
