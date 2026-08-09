@@ -47,16 +47,14 @@ Audio recording and speech recognition take place entirely on your Mac. SwiftVoi
 
 ## 📋 Requirements
 
-- macOS 14.0 (Sonoma) or newer on Apple Silicon (M1/M2/M3/M4).
-- Xcode Command Line Tools (`xcode-select --install`).
-- CMake.
-- Git.
+- macOS 14.0 (Sonoma) or newer.
+- A Mac with Apple Silicon.
 
 ---
 
 ## 🚀 Install the Ready-to-Run App
 
-1. Download `SwiftVoice-1.3.0-macOS-arm64.zip` from [GitHub Releases](https://github.com/dgalact/SwiftVoice/releases/latest).
+1. Download the latest `SwiftVoice-<version>-macOS-arm64.zip` from [GitHub Releases](https://github.com/dgalact/SwiftVoice/releases/latest).
 2. Extract the archive and move `SwiftVoice.app` to `/Applications`.
 3. On first launch, Control-click the app and choose **Open**. The current release is ad-hoc signed and is not notarized with an Apple Developer ID.
 4. Grant Microphone and Accessibility permissions, then download a Whisper model in **Settings → Recognition**.
@@ -65,9 +63,11 @@ The ready-to-run app supports Apple Silicon Macs and does not require Xcode, CMa
 
 ## 🧑‍💻 Build from Source
 
+Building is only required for development. Install Xcode Command Line Tools, CMake, and Git first.
+
 1. Clone the repository:
    ```bash
-   git clone https://github.com/dgalact/SwiftVoice.git
+   git clone --recurse-submodules https://github.com/dgalact/SwiftVoice.git
    cd SwiftVoice
    ```
 
@@ -109,7 +109,7 @@ open "/Applications/SwiftVoice.app"
 ```
 Creates and verifies an arm64 ZIP plus SHA-256 checksum under `release/`.
 
-Published releases are built automatically on GitHub's Apple Silicon macOS 15 runner. Update `CFBundleShortVersionString` in `Resources/Info.plist`, commit and push the change, then push the matching tag (for example, `v1.4.0`). GitHub verifies that the tag and application version match, creates the ZIP and checksum, and publishes the GitHub Release.
+Published releases are built automatically on GitHub's Apple Silicon macOS 15 runner. Update `CFBundleShortVersionString` in `Resources/Info.plist`, commit and push the change, then push the matching tag (for example, `v1.3.1`). GitHub verifies that the tag and application version match, creates the ZIP and checksum, and publishes the GitHub Release. Ordinary commits never publish a release.
 
 ### Bootstrap `whisper.cpp`
 ```bash
@@ -127,7 +127,7 @@ Open Settings via the Menu Bar icon, `Command+,`, or by opening `SwiftVoice.app`
 - **Dictionary**: Custom domain terminology, alias replacements, and **Import/Export** buttons (JSON & CSV).
 - **Recognition**: Bundled `whisper.cpp v1.9.2` engine, in-app model selector and downloader, custom model selection, automatic language detection, and privacy information.
 - **Transcription**: Local WAV/M4A/MP3/AAC file transcription with an editable result, Copy, and Save TXT actions. The personal dictation dictionary is intentionally not applied.
-- **About**: Version information (`v1.3.0`), license details, and project repository links.
+- **About**: Version information, license details, and project repository links.
 
 The dictionary file is stored at:
 ```text

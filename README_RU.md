@@ -45,16 +45,14 @@
 
 ## 📋 Требования
 
-- macOS 14.0 (Sonoma) или новее на Apple Silicon (M1/M2/M3/M4).
-- Xcode Command Line Tools (`xcode-select --install`).
-- CMake.
-- Git.
+- macOS 14.0 (Sonoma) или новее.
+- Mac с Apple Silicon.
 
 ---
 
 ## 🚀 Установка готового приложения
 
-1. Скачайте `SwiftVoice-1.3.0-macOS-arm64.zip` из [GitHub Releases](https://github.com/dgalact/SwiftVoice/releases/latest).
+1. Скачайте последний `SwiftVoice-<version>-macOS-arm64.zip` из [GitHub Releases](https://github.com/dgalact/SwiftVoice/releases/latest).
 2. Распакуйте архив и переместите `SwiftVoice.app` в `/Applications`.
 3. При первом запуске нажмите по приложению с Control и выберите **Открыть**. Текущий релиз подписан ad-hoc и не нотаризован сертификатом Apple Developer ID.
 4. Предоставьте доступ к микрофону и Accessibility, затем скачайте модель Whisper в **Настройки → Распознавание**.
@@ -63,9 +61,11 @@
 
 ## 🧑‍💻 Сборка из исходников
 
+Сборка нужна только для разработки. Предварительно установите Xcode Command Line Tools, CMake и Git.
+
 1. Клонируйте репозиторий:
    ```bash
-   git clone https://github.com/dgalact/SwiftVoice.git
+   git clone --recurse-submodules https://github.com/dgalact/SwiftVoice.git
    cd SwiftVoice
    ```
 
@@ -107,6 +107,8 @@ open "/Applications/SwiftVoice.app"
 ```
 Создаёт и проверяет arm64 ZIP и контрольную сумму SHA-256 в каталоге `release/`.
 
+Публичные релизы автоматически собираются на Apple Silicon runner с `macos-15`. Измените `CFBundleShortVersionString` в `Resources/Info.plist`, закоммитьте и отправьте изменение, затем отправьте совпадающий тег, например `v1.3.1`. GitHub проверит соответствие версии тегу, создаст ZIP и контрольную сумму и опубликует GitHub Release. Обычные коммиты релиз не публикуют.
+
 ### Подготовка `whisper.cpp`
 ```bash
 ./scripts/bootstrap-whisper.sh
@@ -123,7 +125,7 @@ open "/Applications/SwiftVoice.app"
 - **Словарь**: Пользовательская терминология, замена произношений и кнопки **Импорт/Экспорт** (JSON и CSV).
 - **Распознавание**: Встроенный движок `whisper.cpp v1.9.2`, загрузчик и селектор моделей, выбор пользовательской модели, автоматическое определение языка и сведения о конфиденциальности.
 - **Расшифровка**: Локальная обработка WAV/M4A/MP3/AAC с редактируемым результатом, копированием и сохранением TXT. Личный словарь диктовки намеренно не применяется.
-- **О программе**: Сведения о версии (`v1.3.0`), лицензия и ссылки на репозиторий проекта.
+- **О программе**: Сведения о версии, лицензия и ссылки на репозиторий проекта.
 
 Файл словаря хранится по пути:
 ```text

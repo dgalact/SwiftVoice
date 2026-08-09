@@ -45,16 +45,14 @@
 
 ## 📋 Вимоги
 
-- macOS 14.0 (Sonoma) або новіше на Apple Silicon (M1/M2/M3/M4).
-- Xcode Command Line Tools (`xcode-select --install`).
-- CMake.
-- Git.
+- macOS 14.0 (Sonoma) або новіше.
+- Mac з Apple Silicon.
 
 ---
 
 ## 🚀 Встановлення готового додатка
 
-1. Завантажте `SwiftVoice-1.3.0-macOS-arm64.zip` з [GitHub Releases](https://github.com/dgalact/SwiftVoice/releases/latest).
+1. Завантажте останній `SwiftVoice-<version>-macOS-arm64.zip` із [GitHub Releases](https://github.com/dgalact/SwiftVoice/releases/latest).
 2. Розпакуйте архів і перемістіть `SwiftVoice.app` до `/Applications`.
 3. Під час першого запуску натисніть додаток із Control і виберіть **Відкрити**. Поточний реліз підписано ad-hoc і не нотаризовано сертифікатом Apple Developer ID.
 4. Надайте доступ до мікрофона й Accessibility, а потім завантажте модель Whisper у **Налаштування → Розпізнавання**.
@@ -63,9 +61,11 @@
 
 ## 🧑‍💻 Збірка з вихідного коду
 
+Збірка потрібна лише для розробки. Попередньо встановіть Xcode Command Line Tools, CMake та Git.
+
 1. Клонуйте репозиторій:
    ```bash
-   git clone https://github.com/dgalact/SwiftVoice.git
+   git clone --recurse-submodules https://github.com/dgalact/SwiftVoice.git
    cd SwiftVoice
    ```
 
@@ -107,6 +107,8 @@ open "/Applications/SwiftVoice.app"
 ```
 Створює та перевіряє arm64 ZIP і контрольну суму SHA-256 у каталозі `release/`.
 
+Публічні релізи автоматично збираються на Apple Silicon runner із `macos-15`. Змініть `CFBundleShortVersionString` у `Resources/Info.plist`, закомітьте й надішліть зміну, а потім надішліть відповідний тег, наприклад `v1.3.1`. GitHub перевірить відповідність версії тегу, створить ZIP і контрольну суму та опублікує GitHub Release. Звичайні коміти реліз не публікують.
+
 ### Підготовка `whisper.cpp`
 ```bash
 ./scripts/bootstrap-whisper.sh
@@ -123,7 +125,7 @@ open "/Applications/SwiftVoice.app"
 - **Словник**: Користувацька термінологія, заміна вимов та кнопки **Імпорт/Експорт** (JSON та CSV).
 - **Розпізнавання**: Вбудований рушій `whisper.cpp v1.9.2`, завантажувач і селектор моделей, вибір користувацької моделі, автоматичне визначення мови та відомості про конфіденційність.
 - **Транскрипція**: Локальна обробка WAV/M4A/MP3/AAC з редагованим результатом, копіюванням і збереженням TXT. Особистий словник диктування навмисно не застосовується.
-- **Про програму**: Відомості про версію (`v1.3.0`), ліцензія та посилання на репозиторій проєкту.
+- **Про програму**: Відомості про версію, ліцензія та посилання на репозиторій проєкту.
 
 Файл словника зберігається за шляхом:
 ```text
