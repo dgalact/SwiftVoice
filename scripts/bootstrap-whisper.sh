@@ -16,7 +16,7 @@ if ! command -v cmake >/dev/null 2>&1; then
   exit 2
 fi
 
-if [[ ! -d "$whisper_dir/.git" ]]; then
+if ! git -C "$whisper_dir" rev-parse --git-dir >/dev/null 2>&1; then
   git clone --branch "$whisper_version" --depth 1 "$whisper_repository" "$whisper_dir"
 else
   if [[ -n "$(git -C "$whisper_dir" status --porcelain --untracked-files=no)" ]]; then
