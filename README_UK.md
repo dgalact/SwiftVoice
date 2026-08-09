@@ -95,7 +95,7 @@ open "/Applications/SwiftVoice.app"
 ```bash
 ./scripts/bootstrap-whisper.sh
 ```
-*Автоматично очищає `vendor/whisper.cpp/build` перед CMake для запобігання конфліктам.*
+*Використовує перевірений реліз `whisper.cpp` `v1.9.2` із зафіксованим комітом, а потім очищає `vendor/whisper.cpp/build` перед CMake. Нові версії upstream ніколи не завантажуються неявно.*
 
 ---
 

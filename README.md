@@ -95,7 +95,7 @@ open "/Applications/SwiftVoice.app"
 ```bash
 ./scripts/bootstrap-whisper.sh
 ```
-*Cleanly removes `vendor/whisper.cpp/build` before configuring CMake to ensure clean builds.*
+*Uses the verified `whisper.cpp` release `v1.9.2` at its pinned commit, then cleanly removes `vendor/whisper.cpp/build` before configuring CMake. New upstream versions are never pulled implicitly.*
 
 ---
 
