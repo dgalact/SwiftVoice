@@ -5,9 +5,8 @@ import Foundation
 @MainActor
 final class AudioRecorder: ObservableObject {
     private var audioEngine: AVAudioEngine?
-    private nonisolated(unsafe) var audioFile: AVAudioFile?
+    private var tapState: AudioTapState?
     private var startTime: Date?
-    private let writeQueue = DispatchQueue(label: "org.swiftvoice.audiowrite", qos: .userInitiated)
     private(set) var recordingURL: URL?
     @Published var audioLevel: Float = 0.0
     @Published var isRecording = false
@@ -36,37 +35,25 @@ final class AudioRecorder: ObservableObject {
         }
 
         let file = try AVAudioFile(forWriting: url, settings: inputFormat.settings)
-
-        inputNode.installTap(onBus: 0, bufferSize: 1024, format: inputFormat) { [weak self] buffer, _ in
-            guard let self = self else { return }
-
-            if let channelData = buffer.floatChannelData?[0] {
-                let channelDataPointer = channelData
-                let frameLength = Int(buffer.frameLength)
-                var sum: Float = 0.0
-                for i in 0..<frameLength {
-                    let sample = channelDataPointer[i]
-                    sum += sample * sample
-                }
-                let rms = sqrt(sum / Float(max(1, frameLength)))
-                let level = max(0.0, min(1.0, rms * 6.0))
-                Task { @MainActor in
-                    self.audioLevel = level
-                }
-            }
-
-            guard let bufferCopy = buffer.copy() as? AVAudioPCMBuffer else { return }
-            self.writeQueue.async {
-                guard let file = self.audioFile else { return }
-                try? file.write(from: bufferCopy)
+        let tapState = AudioTapState(file: file)
+        let tapHandler = Self.makeTapHandler(state: tapState) { [weak self] level in
+            Task { @MainActor [weak self] in
+                self?.audioLevel = level
             }
         }
+
+        inputNode.installTap(
+            onBus: 0,
+            bufferSize: 1024,
+            format: inputFormat,
+            block: tapHandler
+        )
 
         engine.prepare()
         try engine.start()
 
         self.audioEngine = engine
-        self.audioFile = file
+        self.tapState = tapState
         self.recordingURL = url
         self.startTime = Date()
         self.isRecording = true
@@ -79,12 +66,12 @@ final class AudioRecorder: ObservableObject {
         let duration = startTime.map { Date().timeIntervalSince($0) } ?? 0
 
         engine.inputNode.removeTap(onBus: 0)
-        writeQueue.sync {}
+        tapState?.finish()
         try? engine.inputNode.setVoiceProcessingEnabled(false)
         engine.stop()
 
         self.audioEngine = nil
-        self.audioFile = nil
+        self.tapState = nil
         self.audioLevel = 0.0
 
         guard let recordingURL else { return nil }
@@ -98,9 +85,52 @@ final class AudioRecorder: ObservableObject {
             engine.stop()
         }
         audioEngine = nil
-        audioFile = nil
+        tapState?.finish()
+        tapState = nil
         isRecording = false
         audioLevel = 0.0
+    }
+
+    nonisolated private static func makeTapHandler(
+        state: AudioTapState,
+        updateLevel: @escaping @Sendable (Float) -> Void
+    ) -> AVAudioNodeTapBlock {
+        { buffer, _ in
+            state.process(buffer: buffer, updateLevel: updateLevel)
+        }
+    }
+}
+
+private final class AudioTapState: @unchecked Sendable {
+    private let queue = DispatchQueue(label: "org.swiftvoice.audiowrite", qos: .userInitiated)
+    private var file: AVAudioFile?
+
+    init(file: AVAudioFile) {
+        self.file = file
+    }
+
+    func process(buffer: AVAudioPCMBuffer, updateLevel: @Sendable (Float) -> Void) {
+        if let channelData = buffer.floatChannelData?[0] {
+            let frameLength = Int(buffer.frameLength)
+            var sum: Float = 0.0
+            for index in 0..<frameLength {
+                let sample = channelData[index]
+                sum += sample * sample
+            }
+            let rms = sqrt(sum / Float(max(1, frameLength)))
+            updateLevel(max(0.0, min(1.0, rms * 6.0)))
+        }
+
+        guard let bufferCopy = buffer.copy() as? AVAudioPCMBuffer else { return }
+        queue.async { [weak self] in
+            guard let file = self?.file else { return }
+            try? file.write(from: bufferCopy)
+        }
+    }
+
+    func finish() {
+        queue.sync {}
+        file = nil
     }
 }
 

@@ -13,7 +13,8 @@ checksum_path="$archive_path.sha256"
 
 for binary in \
   "$app_dir/Contents/MacOS/SwiftVoice" \
-  "$app_dir/Contents/MacOS/whisper-cli"; do
+  "$app_dir/Contents/MacOS/whisper-cli" \
+  "$app_dir/Contents/MacOS/whisper-server"; do
   architectures=$(lipo -archs "$binary")
   if [[ "$architectures" != "arm64" ]]; then
     echo "Expected an arm64-only release binary, got '$architectures': $binary" >&2

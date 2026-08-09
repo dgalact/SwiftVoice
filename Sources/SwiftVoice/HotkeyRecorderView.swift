@@ -4,6 +4,7 @@ import SwiftUI
 enum HotkeyRecorderKind {
     case pushToTalk
     case continuous
+    case systemAudio
 }
 
 struct HotkeyRecorderView: View {
@@ -16,11 +17,19 @@ struct HotkeyRecorderView: View {
     @State private var eventMonitor: Any?
 
     private var selectedHotkey: Hotkey {
-        kind == .pushToTalk ? hotkeyManager.hotkey : hotkeyManager.continuousHotkey
+        switch kind {
+        case .pushToTalk: hotkeyManager.hotkey
+        case .continuous: hotkeyManager.continuousHotkey
+        case .systemAudio: hotkeyManager.systemAudioHotkey
+        }
     }
 
     private var defaultHotkey: Hotkey {
-        kind == .pushToTalk ? .defaultHotkey : .defaultContinuousHotkey
+        switch kind {
+        case .pushToTalk: .defaultHotkey
+        case .continuous: .defaultContinuousHotkey
+        case .systemAudio: .defaultSystemAudioHotkey
+        }
     }
 
     var body: some View {
@@ -76,7 +85,7 @@ struct HotkeyRecorderView: View {
                     .foregroundStyle(.orange)
                     .padding(.top, 2)
             }
-            if hotkeyManager.hotkey == hotkeyManager.continuousHotkey {
+            if hasDuplicateAssignment {
                 Text(loc.string("warn_hotkeys_same"))
                     .font(.caption)
                     .foregroundStyle(.red)
@@ -169,18 +178,33 @@ struct HotkeyRecorderView: View {
 
 
     private func apply(_ hotkey: Hotkey) {
-        if kind == .pushToTalk {
+        switch kind {
+        case .pushToTalk:
             hotkeyManager.setHotkey(hotkey)
-        } else {
+        case .continuous:
             hotkeyManager.setContinuousHotkey(hotkey)
+        case .systemAudio:
+            hotkeyManager.setSystemAudioHotkey(hotkey)
         }
     }
 
     private func resetToDefault() {
-        if kind == .pushToTalk {
+        switch kind {
+        case .pushToTalk:
             hotkeyManager.resetToDefault()
-        } else {
+        case .continuous:
             hotkeyManager.resetContinuousToDefault()
+        case .systemAudio:
+            hotkeyManager.resetSystemAudioToDefault()
         }
+    }
+
+    private var hasDuplicateAssignment: Bool {
+        let hotkeys = [
+            hotkeyManager.hotkey,
+            hotkeyManager.continuousHotkey,
+            hotkeyManager.systemAudioHotkey
+        ]
+        return hotkeys.filter { $0 == selectedHotkey }.count > 1
     }
 }

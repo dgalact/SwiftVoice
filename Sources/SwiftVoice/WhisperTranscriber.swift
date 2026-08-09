@@ -29,6 +29,11 @@ struct WhisperTranscriber {
             throw DictationError.missingConfiguration
         }
 
+        let prompt = dictionary
+            .map(\.canonical)
+            .filter { !$0.isEmpty }
+            .joined(separator: ", ")
+
         let outputPrefix = FileManager.default.temporaryDirectory
             .appendingPathComponent("swiftvoice-output-\(UUID().uuidString)")
         let outputURL = outputPrefix.appendingPathExtension("txt")
@@ -47,10 +52,6 @@ struct WhisperTranscriber {
             "-nt",
             "-np"
         ]
-        let prompt = dictionary
-            .map(\.canonical)
-            .filter { !$0.isEmpty }
-            .joined(separator: ", ")
         if !prompt.isEmpty {
             arguments += ["--prompt", prompt]
         }
@@ -76,6 +77,14 @@ struct WhisperTranscriber {
             try? FileManager.default.removeItem(at: errorURL)
         }
         let rawText = try String(contentsOf: outputURL, encoding: .utf8)
+        return try prepare(rawText, dictionary: dictionary)
+    }
+
+    func prepareServerResult(_ rawText: String) throws -> String {
+        try prepare(rawText, dictionary: [])
+    }
+
+    private func prepare(_ rawText: String, dictionary: [DictionaryEntry]) throws -> String {
         let cleaned = rawText
             .replacingOccurrences(of: #"\[[^\]]+\]"#, with: "", options: .regularExpression)
             .trimmingCharacters(in: .whitespacesAndNewlines)

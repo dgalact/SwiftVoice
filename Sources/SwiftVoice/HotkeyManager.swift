@@ -7,6 +7,7 @@ final class HotkeyManager: ObservableObject {
     static let shared = HotkeyManager()
     private static let pushToTalkKey = "pushToTalkHotkey"
     private static let continuousKey = "continuousRecordingHotkey"
+    private static let systemAudioKey = "systemAudioRecordingHotkey"
 
     @Published private(set) var hotkey: Hotkey {
         didSet {
@@ -17,6 +18,12 @@ final class HotkeyManager: ObservableObject {
     @Published private(set) var continuousHotkey: Hotkey {
         didSet {
             save(continuousHotkey, key: Self.continuousKey)
+        }
+    }
+
+    @Published private(set) var systemAudioHotkey: Hotkey {
+        didSet {
+            save(systemAudioHotkey, key: Self.systemAudioKey)
         }
     }
 
@@ -32,6 +39,12 @@ final class HotkeyManager: ObservableObject {
             self.continuousHotkey = decoded
         } else {
             self.continuousHotkey = Hotkey.defaultContinuousHotkey
+        }
+        if let data = UserDefaults.standard.data(forKey: Self.systemAudioKey),
+           let decoded = try? JSONDecoder().decode(Hotkey.self, from: data) {
+            self.systemAudioHotkey = decoded
+        } else {
+            self.systemAudioHotkey = Hotkey.defaultSystemAudioHotkey
         }
     }
 
@@ -51,6 +64,15 @@ final class HotkeyManager: ObservableObject {
 
     func resetContinuousToDefault() {
         setContinuousHotkey(Hotkey.defaultContinuousHotkey)
+    }
+
+    func setSystemAudioHotkey(_ newHotkey: Hotkey) {
+        guard systemAudioHotkey != newHotkey else { return }
+        systemAudioHotkey = newHotkey
+    }
+
+    func resetSystemAudioToDefault() {
+        setSystemAudioHotkey(Hotkey.defaultSystemAudioHotkey)
     }
 
     private func save(_ hotkey: Hotkey, key: String) {

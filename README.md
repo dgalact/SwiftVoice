@@ -30,6 +30,8 @@ Audio recording and speech recognition take place entirely on your Mac. SwiftVoi
 
 - **Push-to-Talk Dictation**: Hold your hotkey to record audio, release to transcribe and automatically type text into whichever application is currently focused.
 - **Continuous Dictation**: Press a separately configurable hotkey to record hands-free, then press it again or Escape to stop and transcribe.
+- **System Audio Live Text**: Record Mac audio from videos, courses, or media while short pause-aware fragments are transcribed into a floating Live Text window. Stop with the configurable hotkey or Escape to copy the combined result automatically.
+- **On-Device Live Translation**: Choose any target language supported by Apple Translation while the source language is detected automatically. Accumulated Live Text is retranslated as new context arrives, and the final translation is copied automatically when recording stops.
 - **Copy Last Text**: Copy the most recent successful dictation from the menu bar at any time during the current app session.
 - **Audio File Transcription**: Choose or drop a WAV, M4A, MP3, or AAC file, transcribe it locally without the personal dictation dictionary, then edit, copy, or save the result as UTF-8 text.
 - **Floating Dictation HUD Overlay**: Glassmorphic pill window near the top of the display with real-time audio level waveform animations during dictation (can be toggled in Settings).
@@ -47,7 +49,7 @@ Audio recording and speech recognition take place entirely on your Mac. SwiftVoi
 
 ## 📋 Requirements
 
-- macOS 14.0 (Sonoma) or newer.
+- macOS 15.0 (Sequoia) or newer.
 - A Mac with Apple Silicon.
 
 ---
@@ -109,7 +111,7 @@ open "/Applications/SwiftVoice.app"
 ```
 Creates and verifies an arm64 ZIP plus SHA-256 checksum under `release/`.
 
-Published releases are built automatically on GitHub's Apple Silicon macOS 15 runner. Update `CFBundleShortVersionString` in `Resources/Info.plist`, commit and push the change, then push the matching tag (for example, `v1.3.2`). GitHub verifies that the tag and application version match, creates the ZIP and checksum, and publishes the GitHub Release. Ordinary commits never publish a release.
+Published releases are built automatically on GitHub's Apple Silicon macOS 15 runner. Update `CFBundleShortVersionString` in `Resources/Info.plist`, commit and push the change, then push the matching tag (for example, `v1.4.0`). GitHub verifies that the tag and application version match, creates the ZIP and checksum, and publishes the GitHub Release. Ordinary commits never publish a release.
 
 ### Bootstrap `whisper.cpp`
 ```bash
@@ -124,6 +126,7 @@ Published releases are built automatically on GitHub's Apple Silicon macOS 15 ru
 Open Settings via the Menu Bar icon, `Command+,`, or by opening `SwiftVoice.app` again.
 
 - **General**: Interface Language picker, separate Push-to-Talk and continuous-recording hotkeys, Floating Dictation Overlay toggle, Launch-at-Login toggle, and active microphone selector.
+- **System Audio hotkey**: A third shortcut starts and stops system-audio-only recording. macOS asks for Screen & System Audio Recording permission on first use.
 - **Dictionary**: Custom domain terminology, alias replacements, and **Import/Export** buttons (JSON & CSV).
 - **Recognition**: Bundled `whisper.cpp v1.9.2` engine, in-app model selector and downloader, custom model selection, automatic language detection, and privacy information.
 - **Transcription**: Local WAV/M4A/MP3/AAC file transcription with an editable result, Copy, and Save TXT actions. The personal dictation dictionary is intentionally not applied.

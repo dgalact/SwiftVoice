@@ -18,6 +18,12 @@ struct Hotkey: Codable, Equatable, Sendable {
         isModifierOnly: false
     )
 
+    static let defaultSystemAudioHotkey = Hotkey(
+        keyCode: 11,
+        modifierFlagsRaw: NSEvent.ModifierFlags([.command, .shift]).rawValue,
+        isModifierOnly: false
+    )
+
     var modifierFlags: NSEvent.ModifierFlags {
         NSEvent.ModifierFlags(rawValue: modifierFlagsRaw)
     }

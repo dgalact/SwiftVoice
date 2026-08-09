@@ -140,6 +140,11 @@ final class LocalizationManager: ObservableObject, @unchecked Sendable {
             "ru": "Длительная запись",
             "uk": "Тривалий запис"
         ],
+        "lbl_system_audio_recording": [
+            "en": "System audio",
+            "ru": "Системный звук",
+            "uk": "Системний звук"
+        ],
         "lbl_recording_hotkey": [
             "en": "Press key combination…",
             "ru": "Нажми сочетание клавиш…",
@@ -416,6 +421,16 @@ final class LocalizationManager: ObservableObject, @unchecked Sendable {
             "ru": "Не удалось подготовить аудиофайл для Whisper.",
             "uk": "Не вдалося підготувати аудіофайл для Whisper."
         ],
+        "err_system_no_display": [
+            "en": "No display is available for system audio capture.",
+            "ru": "Не найден экран для захвата системного звука.",
+            "uk": "Не знайдено екран для захоплення системного звуку."
+        ],
+        "err_system_recording": [
+            "en": "Could not record system audio.",
+            "ru": "Не удалось записать системный звук.",
+            "uk": "Не вдалося записати системний звук."
+        ],
 
         // Menu items
         "menu_checking": [
@@ -472,6 +487,96 @@ final class LocalizationManager: ObservableObject, @unchecked Sendable {
             "en": "Copy last text",
             "ru": "Скопировать последний текст",
             "uk": "Скопіювати останній текст"
+        ],
+        "menu_show_live_text": [
+            "en": "Show last Live Text",
+            "ru": "Показать последний Live Text",
+            "uk": "Показати останній Live Text"
+        ],
+        "menu_system_audio_start": [
+            "en": "Start system audio recording",
+            "ru": "Записать системный звук",
+            "uk": "Записати системний звук"
+        ],
+        "menu_system_audio_stop": [
+            "en": "Stop system audio and transcribe",
+            "ru": "Остановить системный звук и распознать",
+            "uk": "Зупинити системний звук і розпізнати"
+        ],
+        "menu_system_audio_recording": [
+            "en": "Recording system audio…",
+            "ru": "Записываю системный звук…",
+            "uk": "Записую системний звук…"
+        ],
+        "live_title": [
+            "en": "SwiftVoice Live Text",
+            "ru": "SwiftVoice Live Text",
+            "uk": "SwiftVoice Live Text"
+        ],
+        "live_loading": [
+            "en": "Loading Whisper model…",
+            "ru": "Загружаю модель Whisper…",
+            "uk": "Завантажую модель Whisper…"
+        ],
+        "live_listening": [
+            "en": "Listening to system audio…",
+            "ru": "Слушаю системный звук…",
+            "uk": "Слухаю системний звук…"
+        ],
+        "live_processing": [
+            "en": "Finishing the last fragment…",
+            "ru": "Обрабатываю последний фрагмент…",
+            "uk": "Обробляю останній фрагмент…"
+        ],
+        "live_ready": [
+            "en": "Ready — full text copied",
+            "ru": "Готово — весь текст скопирован",
+            "uk": "Готово — увесь текст скопійовано"
+        ],
+        "live_waiting_text": [
+            "en": "Recognized text will appear here after the first fragment.",
+            "ru": "Распознанный текст появится здесь после первого фрагмента.",
+            "uk": "Розпізнаний текст з’явиться тут після першого фрагмента."
+        ],
+        "live_original": [
+            "en": "Original",
+            "ru": "Оригинал",
+            "uk": "Оригінал"
+        ],
+        "live_translation_format": [
+            "en": "%@ translation",
+            "ru": "Перевод: %@",
+            "uk": "Переклад: %@"
+        ],
+        "live_waiting_translation": [
+            "en": "The translation will appear here.",
+            "ru": "Перевод появится здесь.",
+            "uk": "Переклад з’явиться тут."
+        ],
+        "live_decrease_font": [
+            "en": "Decrease text size (Command−)",
+            "ru": "Уменьшить текст (Command−)",
+            "uk": "Зменшити текст (Command−)"
+        ],
+        "live_increase_font": [
+            "en": "Increase text size (Command+)",
+            "ru": "Увеличить текст (Command+)",
+            "uk": "Збільшити текст (Command+)"
+        ],
+        "lbl_translate_live_text": [
+            "en": "Translate Live Text",
+            "ru": "Переводить Live Text",
+            "uk": "Перекладати Live Text"
+        ],
+        "lbl_translation_language": [
+            "en": "Translation Language",
+            "ru": "Язык перевода",
+            "uk": "Мова перекладу"
+        ],
+        "hint_translate_live_text": [
+            "en": "The source language is detected automatically. Required languages may download the first time.",
+            "ru": "Исходный язык определяется автоматически. При первом запуске система может загрузить языки.",
+            "uk": "Початкова мова визначається автоматично. Під час першого запуску система може завантажити мови."
         ],
         "menu_settings": [
             "en": "Settings…",

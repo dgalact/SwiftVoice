@@ -8,11 +8,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private enum RecordingMode {
         case pushToTalk
         case continuous
+        case systemAudio
     }
 
     private let recorder = AudioRecorder()
+    private let systemAudioRecorder = SystemAudioRecorder()
     private let transcriber = WhisperTranscriber()
     private let dictionaryStore = DictionaryStore()
+    private let liveTranscriptionWindow = LiveTranscriptionWindowController()
+    private var liveProcessingTask: Task<Void, Never>?
     private var settingsWindowController: SettingsWindowController?
     private var eventTap: CFMachPort?
     private var eventTapSource: CFRunLoopSource?
@@ -24,7 +28,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private var statusMenuItem: NSMenuItem!
     private var microphoneMenuItem: NSMenuItem!
     private var toggleMenuItem: NSMenuItem!
+    private var systemAudioMenuItem: NSMenuItem!
     private var copyLastTextMenuItem: NSMenuItem!
+    private var showLiveTextMenuItem: NSMenuItem!
     private var settingsMenuItem: NSMenuItem!
     private var quitMenuItem: NSMenuItem!
     private var isBusy = false
@@ -61,9 +67,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 self?.updateLocalizedMenuTitles()
             }
             .store(in: &cancellables)
+
+        HotkeyManager.shared.$systemAudioHotkey
+            .receive(on: RunLoop.main)
+            .sink { [weak self] _ in
+                self?.updateLocalizedMenuTitles()
+            }
+            .store(in: &cancellables)
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        WhisperServerManager.shared.stop()
         permissionRetryTimer?.invalidate()
         if let eventTapSource {
             CFRunLoopRemoveSource(CFRunLoopGetMain(), eventTapSource, .commonModes)
@@ -106,6 +120,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         toggleMenuItem.target = self
         menu.addItem(toggleMenuItem)
 
+        systemAudioMenuItem = NSMenuItem(
+            title: "\(loc.string("menu_system_audio_start")): \(HotkeyManager.shared.systemAudioHotkey.displayString)",
+            action: #selector(toggleSystemAudioRecording),
+            keyEquivalent: ""
+        )
+        systemAudioMenuItem.target = self
+        menu.addItem(systemAudioMenuItem)
+
         copyLastTextMenuItem = NSMenuItem(
             title: loc.string("menu_copy_last"),
             action: #selector(copyLastText),
@@ -114,6 +136,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         copyLastTextMenuItem.target = self
         copyLastTextMenuItem.isEnabled = false
         menu.addItem(copyLastTextMenuItem)
+
+        showLiveTextMenuItem = NSMenuItem(
+            title: loc.string("menu_show_live_text"),
+            action: #selector(showLiveText),
+            keyEquivalent: ""
+        )
+        showLiveTextMenuItem.target = self
+        showLiveTextMenuItem.isEnabled = false
+        menu.addItem(showLiveTextMenuItem)
 
         menu.addItem(.separator())
         settingsMenuItem = NSMenuItem(
@@ -135,8 +166,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settingsMenuItem?.title = loc.string("menu_settings")
         quitMenuItem?.title = loc.string("menu_quit")
         copyLastTextMenuItem?.title = loc.string("menu_copy_last")
-        if !recorder.isRecording && !isBusy {
+        showLiveTextMenuItem?.title = loc.string("menu_show_live_text")
+        if !recorder.isRecording && !systemAudioRecorder.isRecording && !isBusy {
             toggleMenuItem?.title = "\(loc.string("menu_continuous_start")): \(HotkeyManager.shared.continuousHotkey.displayString)"
+            systemAudioMenuItem?.title = "\(loc.string("menu_system_audio_start")): \(HotkeyManager.shared.systemAudioHotkey.displayString)"
         }
         refreshMicrophoneMenu()
         refreshConfigurationStatus()
@@ -190,12 +223,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             let hotkeyManager = HotkeyManager.shared
             let hotkey = hotkeyManager.hotkey
             let continuousHotkey = hotkeyManager.continuousHotkey
+            let systemAudioHotkey = hotkeyManager.systemAudioHotkey
             let code = UInt16(event.getIntegerValueField(.keyboardEventKeycode))
 
             if type == .keyDown,
                code == 53,
-               delegate.recordingMode == .continuous {
-                Task { @MainActor in delegate.stopContinuousRecording() }
+               delegate.recordingMode == .continuous || delegate.recordingMode == .systemAudio {
+                Task { @MainActor in delegate.stopToggleRecording() }
+                return nil
+            }
+
+            if !systemAudioHotkey.isModifierOnly,
+               type == .keyDown,
+               code == systemAudioHotkey.keyCode,
+               delegate.modifiersMatch(event.flags, hotkey: systemAudioHotkey),
+               event.getIntegerValueField(.keyboardEventAutorepeat) == 0 {
+                Task { @MainActor in delegate.toggleSystemAudioRecording() }
+                return nil
+            }
+
+            if systemAudioHotkey.isModifierOnly,
+               type == .flagsChanged,
+               code == systemAudioHotkey.keyCode,
+               delegate.modifierIsPressed(code: code, flags: event.flags) {
+                Task { @MainActor in delegate.toggleSystemAudioRecording() }
                 return nil
             }
 
@@ -283,7 +334,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         isHotkeyKeyDown = isPressed
 
         if isPressed {
-            guard !recorder.isRecording, !isBusy else { return }
+            guard !recorder.isRecording, !systemAudioRecorder.isRecording, !isBusy else { return }
             startRecording(mode: .pushToTalk)
         } else if recorder.isRecording, recordingMode == .pushToTalk {
             stopAndTranscribe()
@@ -299,14 +350,75 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
         if recorder.isRecording, recordingMode == .continuous {
             stopAndTranscribe()
-        } else if !recorder.isRecording {
+        } else if !recorder.isRecording && !systemAudioRecorder.isRecording {
             startRecording(mode: .continuous)
         }
     }
 
-    private func stopContinuousRecording() {
-        guard recorder.isRecording, recordingMode == .continuous else { return }
+    private func stopToggleRecording() {
+        guard recordingMode == .continuous || recordingMode == .systemAudio else { return }
         stopAndTranscribe()
+    }
+
+    @objc private func toggleSystemAudioRecording() {
+        guard !isBusy else { return }
+
+        if systemAudioRecorder.isRecording, recordingMode == .systemAudio {
+            stopAndTranscribe()
+        } else if !recorder.isRecording && !systemAudioRecorder.isRecording {
+            startSystemAudioRecording()
+        }
+    }
+
+    private func startSystemAudioRecording() {
+        guard transcriber.isConfigured else {
+            presentConfigurationError()
+            return
+        }
+
+        isBusy = true
+        liveProcessingTask = nil
+        liveTranscriptionWindow.prepare(
+            stopHint: HotkeyManager.shared.systemAudioHotkey.displayString
+        )
+        showLiveTextMenuItem.isEnabled = true
+        setState(
+            title: LocalizationManager.shared.string("live_loading"),
+            symbol: "ellipsis.circle"
+        )
+        Task { [self] in
+            do {
+                guard let modelPath = UserDefaults.standard.string(forKey: Settings.modelPathKey),
+                      !modelPath.isEmpty else {
+                    throw DictationError.missingConfiguration
+                }
+                try await systemAudioRecorder.start { [weak self] url in
+                    Task { @MainActor in
+                        self?.enqueueLiveChunk(url, modelPath: modelPath)
+                    }
+                }
+                recordingMode = .systemAudio
+                toggleMenuItem.isEnabled = false
+                systemAudioMenuItem.title = LocalizationManager.shared.string("menu_system_audio_stop")
+                liveTranscriptionWindow.begin()
+                DictationOverlayManager.shared.showRecording(recorder: recorder)
+                setState(
+                    title: LocalizationManager.shared.string("menu_system_audio_recording"),
+                    symbol: "waveform.circle.fill"
+                )
+                try await WhisperServerManager.shared.start(modelPath: modelPath)
+            } catch {
+                if let recording = try? await systemAudioRecorder.stop() {
+                    try? FileManager.default.removeItem(at: recording.url)
+                }
+                recordingMode = nil
+                WhisperServerManager.shared.stop()
+                showError("SwiftVoice", details: error.localizedDescription)
+                liveTranscriptionWindow.finish()
+                finishTranscriptionUI()
+            }
+            isBusy = false
+        }
     }
 
     private func startRecording(mode: RecordingMode) {
@@ -318,6 +430,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         do {
             try recorder.start()
             recordingMode = mode
+            systemAudioMenuItem.isEnabled = false
             DictationOverlayManager.shared.showRecording(recorder: recorder)
             let loc = LocalizationManager.shared
             if mode == .continuous {
@@ -330,19 +443,106 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func stopAndTranscribe() {
+        if recordingMode == .systemAudio {
+            stopSystemAudioAndTranscribe()
+            return
+        }
+
         guard let recording = recorder.stop() else {
             DictationOverlayManager.shared.hide()
             return
         }
         recordingMode = nil
+        transcribe(
+            recording,
+            dictionary: dictionaryStore.entries,
+            preserveDiagnosticAudio: true,
+            copyToPasteboard: false
+        )
+    }
+
+    private func stopSystemAudioAndTranscribe() {
+        guard systemAudioRecorder.isRecording else { return }
+        recordingMode = nil
         isBusy = true
         toggleMenuItem.isEnabled = false
+        systemAudioMenuItem.isEnabled = false
         DictationOverlayManager.shared.showTranscribing(recorder: recorder)
         let loc = LocalizationManager.shared
         setState(
             title: loc.string("menu_transcribing"),
             symbol: "ellipsis.circle"
         )
+
+        Task {
+            do {
+                guard let recording = try await systemAudioRecorder.stop() else {
+                    throw DictationError.emptyTranscription
+                }
+                defer { try? FileManager.default.removeItem(at: recording.url) }
+                liveTranscriptionWindow.showProcessing()
+                await Task.yield()
+                await liveProcessingTask?.value
+                let text = liveTranscriptionWindow.model.text
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !text.isEmpty else { throw DictationError.emptyTranscription }
+
+                let translatedText = await liveTranscriptionWindow.finishTranslation()
+                let finalText = translatedText ?? text
+
+                lastTranscription = finalText
+                copyLastTextMenuItem.isEnabled = true
+                copyTextToPasteboard(finalText)
+                try TextInjector.type(finalText)
+                liveTranscriptionWindow.finish()
+                WhisperServerManager.shared.stop()
+                DictationOverlayManager.shared.hide()
+                finishTranscriptionUI()
+            } catch {
+                WhisperServerManager.shared.stop()
+                showError("SwiftVoice", details: error.localizedDescription)
+                DictationOverlayManager.shared.hide()
+                liveTranscriptionWindow.finish()
+                finishTranscriptionUI()
+            }
+        }
+    }
+
+    private func enqueueLiveChunk(_ url: URL, modelPath: String) {
+        let previous = liveProcessingTask
+        liveProcessingTask = Task { [weak self] in
+            await previous?.value
+            guard let self else {
+                try? FileManager.default.removeItem(at: url)
+                return
+            }
+            defer { try? FileManager.default.removeItem(at: url) }
+            do {
+                let raw = try await WhisperServerManager.shared.transcribe(
+                    audioURL: url,
+                    modelPath: modelPath,
+                    prompt: ""
+                )
+                let text = try transcriber.prepareServerResult(raw)
+                liveTranscriptionWindow.append(text)
+            } catch {
+                liveTranscriptionWindow.model.status = error.localizedDescription
+            }
+        }
+    }
+
+    private func transcribe(
+        _ recording: Recording,
+        dictionary: [DictionaryEntry],
+        preserveDiagnosticAudio: Bool,
+        copyToPasteboard: Bool
+    ) {
+        isBusy = true
+        toggleMenuItem.isEnabled = false
+        systemAudioMenuItem.isEnabled = false
+        DictationOverlayManager.shared.showTranscribing(recorder: recorder)
+        let loc = LocalizationManager.shared
+        setState(title: loc.string("menu_transcribing"), symbol: "ellipsis.circle")
 
         Task {
             defer {
@@ -352,13 +552,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
                 guard recording.duration >= 0.5 else {
                     throw DictationError.recordingTooShort
                 }
-                try preserveDiagnosticRecording(recording.url)
+                if preserveDiagnosticAudio {
+                    try preserveDiagnosticRecording(recording.url)
+                }
                 let text = try await transcriber.transcribe(
                     recording.url,
-                    dictionary: dictionaryStore.entries
+                    dictionary: dictionary
                 )
                 lastTranscription = text
                 copyLastTextMenuItem.isEnabled = true
+                if copyToPasteboard {
+                    copyTextToPasteboard(text)
+                }
                 try TextInjector.type(text)
                 setState(title: loc.string("menu_ready"), symbol: "checkmark.circle")
             } catch {
@@ -366,17 +571,32 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             }
 
             try? FileManager.default.removeItem(at: recording.url)
-            isBusy = false
-            toggleMenuItem.isEnabled = true
-            toggleMenuItem.title = "\(loc.string("menu_continuous_start")): \(HotkeyManager.shared.continuousHotkey.displayString)"
-            refreshConfigurationStatus()
+            finishTranscriptionUI()
         }
+    }
+
+    private func finishTranscriptionUI() {
+        let loc = LocalizationManager.shared
+        isBusy = false
+        toggleMenuItem.isEnabled = true
+        systemAudioMenuItem.isEnabled = true
+        toggleMenuItem.title = "\(loc.string("menu_continuous_start")): \(HotkeyManager.shared.continuousHotkey.displayString)"
+        systemAudioMenuItem.title = "\(loc.string("menu_system_audio_start")): \(HotkeyManager.shared.systemAudioHotkey.displayString)"
+        refreshConfigurationStatus()
     }
 
     @objc private func copyLastText() {
         guard let lastTranscription else { return }
+        copyTextToPasteboard(lastTranscription)
+    }
+
+    @objc private func showLiveText() {
+        liveTranscriptionWindow.present()
+    }
+
+    private func copyTextToPasteboard(_ text: String) {
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(lastTranscription, forType: .string)
+        NSPasteboard.general.setString(text, forType: .string)
     }
 
     private func modifiersMatch(_ flags: CGEventFlags, hotkey: Hotkey) -> Bool {

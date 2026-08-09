@@ -2,6 +2,7 @@ import AppKit
 import Combine
 import CoreAudio
 import SwiftUI
+@preconcurrency import Translation
 
 @MainActor
 final class SettingsWindowController: NSWindowController {
@@ -65,6 +66,10 @@ private struct GeneralSettingsView: View {
     @State private var selectedDeviceID: UInt32 = 0
     @State private var switchError: String?
     @AppStorage(DictationOverlayManager.enabledKey) private var showDictationOverlay = true
+    @AppStorage(LiveTranslationSettings.enabledKey) private var translateLiveText = false
+    @AppStorage(LiveTranslationSettings.targetLanguageKey)
+    private var liveTranslationTarget = LiveTranslationSettings.defaultTargetLanguage
+    @State private var supportedTranslationLanguages: [Locale.Language] = []
     @State private var launchAtLogin = false
     @State private var loginItemStatus = ""
     @State private var loginItemError: String?
@@ -86,6 +91,21 @@ private struct GeneralSettingsView: View {
                 }
                 LabeledContent(loc.string("lbl_continuous_recording")) {
                     HotkeyRecorderView(kind: .continuous)
+                }
+                LabeledContent(loc.string("lbl_system_audio_recording")) {
+                    HotkeyRecorderView(kind: .systemAudio)
+                }
+                Toggle(loc.string("lbl_translate_live_text"), isOn: $translateLiveText)
+                if translateLiveText {
+                    Picker(loc.string("lbl_translation_language"), selection: $liveTranslationTarget) {
+                        ForEach(supportedTranslationLanguages, id: \.minimalIdentifier) { language in
+                            Text(translationLanguageName(language))
+                                .tag(language.minimalIdentifier)
+                        }
+                    }
+                    Text(loc.string("hint_translate_live_text"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 Toggle(loc.string("lbl_show_overlay"), isOn: $showDictationOverlay)
                 LabeledContent(loc.string("lbl_processing")) {
@@ -143,9 +163,37 @@ private struct GeneralSettingsView: View {
                 || LoginItemManager.isEnabled
             refreshLoginItemStatus()
         }
+        .task {
+            await loadSupportedTranslationLanguages()
+        }
         .onChange(of: loc.language) { _, _ in
             refreshLoginItemStatus()
         }
+    }
+
+    private func loadSupportedTranslationLanguages() async {
+        let languages = await LanguageAvailability().supportedLanguages
+        let unique = Dictionary(
+            languages.map { ($0.minimalIdentifier, $0) },
+            uniquingKeysWith: { first, _ in first }
+        ).values
+        supportedTranslationLanguages = unique.sorted {
+            translationLanguageName($0).localizedStandardCompare(
+                translationLanguageName($1)
+            ) == .orderedAscending
+        }
+
+        if !supportedTranslationLanguages.contains(where: {
+            $0.minimalIdentifier == liveTranslationTarget
+        }) {
+            liveTranslationTarget = LiveTranslationSettings.defaultTargetLanguage
+        }
+    }
+
+    private func translationLanguageName(_ language: Locale.Language) -> String {
+        Locale(identifier: loc.currentCode).localizedString(
+            forIdentifier: language.minimalIdentifier
+        ) ?? language.minimalIdentifier
     }
 
     private func refreshLoginItemStatus() {

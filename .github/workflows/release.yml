@@ -60,16 +60,23 @@ jobs:
         run: |
           app="dist/SwiftVoice.app"
           cli="$app/Contents/MacOS/whisper-cli"
+          server="$app/Contents/MacOS/whisper-server"
           version="${{ steps.version.outputs.version }}"
           archive="release/SwiftVoice-${version}-macOS-arm64.zip"
 
           test "$(lipo -archs "$app/Contents/MacOS/SwiftVoice")" = "arm64"
           test "$(lipo -archs "$cli")" = "arm64"
+          test "$(lipo -archs "$server")" = "arm64"
           codesign --verify --deep --strict "$app"
           otool -l "$cli" | grep -Fq "@executable_path/../Frameworks"
+          otool -l "$server" | grep -Fq "@executable_path/../Frameworks"
 
           if otool -L "$cli" | grep -Eq "/Users/|/opt/homebrew"; then
             echo "whisper-cli contains a non-portable runtime dependency" >&2
+            exit 1
+          fi
+          if otool -L "$server" | grep -Eq "/Users/|/opt/homebrew"; then
+            echo "whisper-server contains a non-portable runtime dependency" >&2
             exit 1
           fi
 

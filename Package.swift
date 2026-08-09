@@ -4,7 +4,7 @@ import PackageDescription
 
 let package = Package(
     name: "SwiftVoice",
-    platforms: [.macOS(.v14)],
+    platforms: [.macOS(.v15)],
     products: [
         .executable(name: "SwiftVoice", targets: ["SwiftVoice"])
     ],
@@ -18,7 +18,9 @@ let package = Package(
                 .linkedFramework("AVFoundation"),
                 .linkedFramework("ApplicationServices"),
                 .linkedFramework("CoreAudio"),
-                .linkedFramework("ServiceManagement")
+                .linkedFramework("ScreenCaptureKit"),
+                .linkedFramework("ServiceManagement"),
+                .linkedFramework("Translation")
             ]
         )
     ]

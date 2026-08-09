@@ -19,14 +19,16 @@
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.3.2</string>
+    <string>1.4.0</string>
     <key>CFBundleVersion</key>
-    <string>3</string>
+    <string>4</string>
     <key>LSMinimumSystemVersion</key>
-    <string>14.0</string>
+    <string>15.0</string>
     <key>LSUIElement</key>
     <true/>
     <key>NSMicrophoneUsageDescription</key>
     <string>SwiftVoice использует микрофон только во время диктовки.</string>
+    <key>NSScreenCaptureUsageDescription</key>
+    <string>SwiftVoice записывает системный звук только после запуска соответствующего режима.</string>
 </dict>
 </plist>
