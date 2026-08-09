@@ -180,7 +180,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func requestPermissions() {
-        AVCaptureDevice.requestAccess(for: .audio) { _ in }
+        Task {
+            _ = await AVCaptureDevice.requestAccess(for: .audio)
+        }
         let options = ["AXTrustedCheckOptionPrompt": true] as CFDictionary
         _ = AXIsProcessTrustedWithOptions(options)
     }
