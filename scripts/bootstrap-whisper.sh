@@ -42,8 +42,8 @@ rm -rf "$whisper_dir/build"
 
 cmake -S "$whisper_dir" -B "$whisper_dir/build" \
   -DCMAKE_BUILD_TYPE=Release \
-  -DWHISPER_METAL=ON
-cmake --build "$whisper_dir/build" --config Release -j
+  -DGGML_METAL=ON
+cmake --build "$whisper_dir/build" --config Release --target whisper-cli -j
 
 echo "whisper-cli:"
 find "$whisper_dir/build" -type f -name whisper-cli -perm -111 -print -quit
