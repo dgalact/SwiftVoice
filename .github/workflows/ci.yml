@@ -1,0 +1,86 @@
+name: macOS CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/ci.yml"
+      - ".gitmodules"
+      - "Package.swift"
+      - "Resources/**"
+      - "Sources/**"
+      - "scripts/**"
+      - "vendor/whisper.cpp"
+  pull_request:
+    paths:
+      - ".github/workflows/ci.yml"
+      - ".gitmodules"
+      - "Package.swift"
+      - "Resources/**"
+      - "Sources/**"
+      - "scripts/**"
+      - "vendor/whisper.cpp"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: macos-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and verify Apple Silicon release
+    runs-on: macos-15
+    timeout-minutes: 30
+
+    defaults:
+      run:
+        shell: zsh {0}
+
+    steps:
+      - name: Check out SwiftVoice and pinned whisper.cpp
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Show toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          swift --version
+          cmake --version
+          uname -m
+
+      - name: Build pinned whisper.cpp runtime
+        run: ./scripts/bootstrap-whisper.sh
+
+      - name: Build and package SwiftVoice
+        run: ./scripts/package-release.sh
+
+      - name: Verify release bundle
+        run: |
+          app="dist/SwiftVoice.app"
+          cli="$app/Contents/MacOS/whisper-cli"
+          version=$(plutil -extract CFBundleShortVersionString raw "$app/Contents/Info.plist")
+          archive="release/SwiftVoice-${version}-macOS-arm64.zip"
+
+          test "$(lipo -archs "$app/Contents/MacOS/SwiftVoice")" = "arm64"
+          test "$(lipo -archs "$cli")" = "arm64"
+          codesign --verify --deep --strict "$app"
+          otool -l "$cli" | grep -Fq "@executable_path/../Frameworks"
+
+          if otool -L "$cli" | grep -Eq "/Users/|/opt/homebrew"; then
+            echo "whisper-cli contains a non-portable runtime dependency" >&2
+            exit 1
+          fi
+
+          test -f "$archive"
+          (
+            cd release
+            shasum -a 256 -c "$(basename "$archive").sha256"
+          )
+
+          echo "Verified SwiftVoice $version on $(uname -m)"
