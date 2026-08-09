@@ -1,5 +1,7 @@
 # SwiftVoice
 
+[![macOS CI](https://github.com/dgalact/SwiftVoice/actions/workflows/ci.yml/badge.svg)](https://github.com/dgalact/SwiftVoice/actions/workflows/ci.yml)
+
 > A minimal, fast, and 100% private local Push-to-Talk voice dictation app for macOS powered by `whisper.cpp` and Apple Metal GPU acceleration.
 
 🌐 **Language:** [English](README.md) | [Українська](README_UK.md) | [Русский](README_RU.md)
